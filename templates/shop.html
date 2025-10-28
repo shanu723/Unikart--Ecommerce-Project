@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+        <!-- Hero Area Start-->
+        <div class="slider-area ">
+            <div class="single-slider slider-height2 d-flex align-items-center">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-xl-12">
+                            <div class="hero-cap text-center">
+                                <h2>Unikart</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Hero Area End-->
+        <!-- Latest Products Start -->
+        <section class="popular-items latest-padding">
+            <div class="container">
+                <div class="row product-btn justify-content-between mb-40">
+                    <div class="properties__button">
+                        <!--Nav Button  -->
+                        <nav>                                                      
+                            <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                                <a class="nav-item nav-link {% if current_sort == 'newest' %}active{% endif %}" 
+                                href="?sort=newest">Newest Arrivals</a>
+
+                                <a class="nav-item nav-link {% if current_sort == 'high_to_low' %}active{% endif %}" 
+                                href="?sort=high_to_low">Price high to low</a>
+
+                                <a class="nav-item nav-link {% if current_sort == 'low_to_high' %}active{% endif %}" 
+                                href="?sort=low_to_high">Price Low to high </a>
+                            </div>
+
+                        </nav>
+                        <!--End Nav Button  -->
+                    </div>
+                    <!-- Grid and List view -->
+                    <div class="grid-list-view">
+                    </div>
+                    <!-- Select items -->
+                   <!---- <div class="select-this">
+                        <form action="#">
+                            <div class="select-itms">
+                                <select name="select" id="select1">
+                                    <option value="">40 per page</option>
+                                    <option value="">50 per page</option>
+                                    <option value="">60 per page</option>
+                                    <option value="">70 per page</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>-->
+                </div>
+                <!-- Nav Card -->
+                <div class="tab-content" id="nav-tabContent">
+                    <!-- card one -->
+                     
+                    <div class="tab-pane fade show active" id="nav-home" role="tabpanel" aria-labelledby="nav-home-tab">
+                        
+                        <div class="row">
+                            {% for product in products %}
+                            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-6">
+                                
+                                <div class="single-popular-items mb-50 text-center">
+                                    
+                                    <div class="popular-img">
+                                        {% if product.productimages.first %}
+                                            <img src="{{ product.productimages.first.product_image.url }}" alt="{{ product.name }}">
+                                        
+                                        {% else %}
+                                            <p>No image for {{ product.name }}</p>
+                                        {% endif %}
+
+                                        <a href="{% url 'product' product.id %}">
+                                            <div class="img-cap">
+                                                <span>Shop Now</span>
+                                            </div>
+                                         </a>
+<div class="favorit-items" onclick="addToWishlist({{ product.id }})">
+    <span class="flaticon-heart" id="heart-{{ product.id }}"></span>
+</div>
+
+                                    </div>
+                                    <div class="popular-caption">
+                                        <h3><a href="{% url 'product' product.id %}">{{ product.name|truncatechars:15 }}</a></h3>
+
+                                        {% with variation=product.variation_set.first %}
+                                            {% if variation %}
+                                                <div>
+                                                
+                                                <strong><del>Original Price:</strong> ₹{{ variation.original_price }} <br></del>
+                                                    
+                                                <strong>Checkout for New Price</strong>  <br>
+                                                </div>
+                                            {% else %}
+                                                <p>No variations available.</p>
+                                            {% endif %}
+                                        {% endwith %}
+                                    
+                                    </div>
+                                </div>
+                               
+                            </div>
+                             {% endfor %}
+                        </div>
+                    </div>
+                    <!-- Card two -->
+                    <div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab">
+                        <div class="row">
+                            {% for product in products %}
+                            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-6">
+                                <div class="single-popular-items mb-50 text-center">
+                                    <div class="popular-img">
+                                        {% if product.productimages.first %}
+                                            <img src="{{ product.productimages.first.product_image.url }}" alt="{{ product.name }}">
+                                            <!-- Debug: {{ product.productimages.first.product_image.url }} -->
+                                        {% else %}
+                                            <p>No image for {{ product.name }}</p>
+                                        {% endif %}
+                                        <a href="{% url 'product' product.id %}">
+                                        <div class="img-cap">
+                                            <span>Add to cart</span>
+                                        </div>
+                                        </a>
+                                        <div class="favorit-items">
+                                            <span class="flaticon-heart"></span>
+                                        </div>
+                                    </div>
+                                    <div class="popular-caption">
+                                        <h3><a href="{% url 'product' product.id %}">{{ product.name }}</a></h3>
+                                        {% with variation=product.variation_set.first %}
+                                            {% if variation %}
+                                                <div>
+                                                <strong><del>Original Price:</strong> ₹{{ variation.original_price }} <br></del>
+                                                <strong>Selling Price:</strong> ₹{{ variation.selling_price }} <br>
+                                                </div>
+                                            {% else %}
+                                                <p>No variations available.</p>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <!-- Card three -->
+                    <div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab">
+                        <div class="row">
+                            {% for product in products %}
+                            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-6">
+                                <div class="single-popular-items mb-50 text-center">
+                                    <div class="popular-img">
+                                        {% if product.productimages.first %}
+                                            <img src="{{ product.productimages.first.product_image.url }}" alt="{{ product.name }}">
+                                            <!-- Debug: {{ product.productimages.first.product_image.url }} -->
+                                        {% else %}
+                                            <p>No image for {{ product.name }}</p>
+                                        {% endif %}
+                                        <a href="{% url 'product' product.id %}">
+                                        <div class="img-cap">
+                                            <span>Add to cart</span>
+                                        </div>
+                                        </a>
+                                        <div class="favorit-items">
+                                            <span class="flaticon-heart"></span>
+                                        </div>
+                                    </div>
+                                    <div class="popular-caption">
+                                        <h3><a href="{% url 'product' product.id %}">{{ product.name }}</a></h3>
+                                        {% with variation=product.variation_set.first %}
+                                            {% if variation %}
+                                                <div>
+                                                <strong><del>Original Price:</strong> ₹{{ variation.original_price }} <br></del>
+                                                <strong>Selling Price:</strong> ₹{{ variation.selling_price }} <br>
+                                                </div>
+                                            {% else %}
+                                                <p>No variations available.</p>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <!-- End Nav Card -->
+                
+                <!-- Pagination -->
+               <div class="row mt-5">
+    <div class="col-12">
+        <div class="pagination justify-content-center">
+
+            <!-- Previous Button -->
+            {% if products.has_previous %}
+                <a href="?page={{ products.previous_page_number }}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="btn btn-outline-secondary mr-2">&laquo; Previous</a>
+            {% else %}
+                <span class="btn btn-outline-secondary mr-2 disabled">&laquo; Previous</span>
+            {% endif %}
+
+            <!-- Page Numbers -->
+            {% for num in products.paginator.page_range %}
+                {% if products.number == num %}
+                    <span class="btn btn-primary mr-2">{{ num }}</span>
+                {% else %}
+                    <a href="?page={{ num }}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="btn btn-outline-secondary mr-2">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Next Button -->
+            {% if products.has_next %}
+                <a href="?page={{ products.next_page_number }}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="btn btn-outline-secondary">Next &raquo;</a>
+            {% else %}
+                <span class="btn btn-outline-secondary disabled">Next &raquo;</span>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+                </div>
+            </div>
+        </section>
+
+        
+        <!-- Latest Products End -->
+        <!--? Shop Method Start-->
+        <div class="shop-method-area">
+            <div class="container">
+                <div class="method-wrapper">
+                    <div class="row d-flex justify-content-between">
+                        <div class="col-xl-4 col-lg-4 col-md-6">
+                            <div class="single-method mb-40">
+                                <i class="ti-package"></i>
+                                <h6>Free Shipping Method</h6>
+                                <p>aorem ixpsacdolor sit ameasecur adipisicing elitsf edasd.</p>
+                            </div>
+                        </div>
+                        <div class="col-xl-4 col-lg-4 col-md-6">
+                            <div class="single-method mb-40">
+                                <i class="ti-unlock"></i>
+                                <h6>Secure Payment System</h6>
+                                <p>aorem ixpsacdolor sit ameasecur adipisicing elitsf edasd.</p>
+                            </div>
+                        </div> 
+                        <div class="col-xl-4 col-lg-4 col-md-6">
+                            <div class="single-method mb-40">
+                                <i class="ti-reload"></i>
+                                <h6>Secure Payment System</h6>
+                                <p>aorem ixpsacdolor sit ameasecur adipisicing elitsf edasd.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Shop Method End-->
+    </main>
+    <script>
+function addToWishlist(productId) {
+    fetch(`/add_to_wishlist/${productId}/`, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const heart = document.getElementById(`heart-${productId}`);
+        if (data.status === 'added') {
+            heart.style.color = '#e91e63'; // red heart
+        } else if (data.status === 'removed') {
+            heart.style.color = '#ccc'; // back to gray
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+
+    {% endblock %}
+    <footer>
+       

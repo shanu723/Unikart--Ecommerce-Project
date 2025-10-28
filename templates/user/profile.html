@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <!-- LEFT SIDE: PROFILE INFO -->
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 p-3">
+        <div class="text-center">
+          {% if user.profile.profile_photo %}
+            <img src="{{ user.profile.profile_photo.url }}" class="rounded-circle mb-3" alt="Profile Photo" width="120" height="120">
+          {% else %}
+            <img src="{% static 'images/default-profile.png' %}" class="rounded-circle mb-3" alt="Default Profile Photo" width="120" height="120">
+          {% endif %}
+
+          <h5 class="mb-1">{{ user.first_name }} {{ user.last_name }}</h5>
+          <p class="text-muted mb-2">{{ user.email }}</p>
+          <p class="text-muted mb-3">📞 {{ user.profile.phone|default:"Not Provided" }}</p>
+
+          <div class="d-flex justify-content-center gap-2">
+            <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">Edit Profile</a>
+            <a href="#" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#changePhotoModal">Change Photo</a>
+          </div>
+        </div>
+
+        <hr>
+
+              </div>
+    </div>
+
+    <!-- RIGHT SIDE: ADDRESSES -->
+    <div class="col-md-8">
+      <div class="card shadow-sm border-0 p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="mb-0">Saved Addresses</h5>
+          <a href="#" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAddressModal">+ Add Address</a>
+        </div>
+
+        {% if addresses %}
+          {% for address in addresses %}
+          <div class="border rounded p-3 mb-3 {% if address.is_default %}border-success{% endif %}">
+            <h6 class="mb-1">{{ address.street }}, {{ address.city }}</h6>
+            <p class="mb-1">{{ address.district }}, {{ address.state }} - {{ address.pincode }}</p>
+            {% if address.is_default %}
+              <span class="badge bg-success">Default</span>
+            {% endif %}
+            <div class="mt-2">
+              <a href="#" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#editAddressModal{{ address.id }}">Edit</a>
+              <a href="{% url 'remove_address' address.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+              {% if not address.is_default %}
+                <a href="{% url 'set_default_address' address.id %}" class="btn btn-sm btn-outline-success">Set as Default</a>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Edit Address Modal -->
+          <div class="modal fade" id="editAddressModal{{ address.id }}" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <form method="POST" action="{% url 'edit_address' address.id %}">
+                  {% csrf_token %}
+                  <div class="modal-header">
+                    <h5 class="modal-title">Edit Address</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="mb-2">
+                      <label>Street</label>
+                      <input type="text" name="street" value="{{ address.street }}" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                      <label>City</label>
+                      <input type="text" name="city" value="{{ address.city }}" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                      <label>District</label>
+                      <input type="text" name="district" value="{{ address.district }}" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                      <label>State</label>
+                      <input type="text" name="state" value="{{ address.state }}" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                      <label>Pincode</label>
+                      <input type="text" name="pincode" value="{{ address.pincode }}" class="form-control" required>
+                    </div>
+                    <div class="form-check">
+                      <input type="checkbox" name="is_default" class="form-check-input" {% if address.is_default %}checked{% endif %}>
+                      <label class="form-check-label">Set as Default</label>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="text-muted">No addresses saved yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Address Modal -->
+<div class="modal fade" id="addAddressModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'add_address' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Add Address</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label>Street</label>
+            <input type="text" name="street" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label>City</label>
+            <input type="text" name="city" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label>District</label>
+            <input type="text" name="district" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label>State</label>
+            <input type="text" name="state" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label>Pincode</label>
+            <input type="text" name="pincode" class="form-control" required>
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="is_default" class="form-check-input">
+            <label class="form-check-label">Set as Default</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Save</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'update_profile' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label>First Name</label>
+            <input type="text" name="first_name" value="{{ user.first_name }}" class="form-control">
+          </div>
+          <div class="mb-2">
+            <label>Last Name</label>
+            <input type="text" name="last_name" value="{{ user.last_name }}" class="form-control">
+          </div>
+          <div class="mb-2">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ user.email }}" class="form-control">
+          </div>
+          <div class="mb-2">
+            <label>Phone</label>
+            <input type="text" name="phone" value="{{ user.profile.phone }}" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Change Photo Modal -->
+<div class="modal fade" id="changePhotoModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" enctype="multipart/form-data" action="{% url 'update_profile' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">Change Profile Photo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="file" name="profile_photo" accept="image/*" class="form-control" required>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Bootstrap JS (for modals, dropdowns, etc.) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% endblock %}

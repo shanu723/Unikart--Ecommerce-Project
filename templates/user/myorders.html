@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load tz %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="text-center mb-4">My Orders</h2>
+
+    {% if user_orders %}
+        <div class="table-responsive shadow rounded">
+            <table class="table align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Order ID</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Items</th>
+                        <th scope="col">Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in user_orders %}
+<tr>
+    <td>#{{ order.id }}</td>
+    <td>
+        {% timezone "Asia/Kolkata" %}
+            {{ order.created_at|date:"d M Y, h:i A" }}
+        {% endtimezone %}
+    </td>
+    <td>
+        {% if order.status == "Delivered" %}
+            <span class="badge bg-success">{{ order.status }}</span>
+        {% elif order.status == "Cancelled" %}
+            <span class="badge bg-danger">{{ order.status }}</span>
+        {% elif order.status == "Processing" %}
+            <span class="badge bg-warning text-dark">{{ order.status }}</span>
+        {% else %}
+            <span class="badge bg-secondary">{{ order.status }}</span>
+        {% endif %}
+    </td>
+    <td>
+        <ul class="list-unstyled mb-0">
+            {% for item in order.items.all %}
+                <li>{{ item.product.name }} × {{ item.quantity }} — ₹{{ item.price }}</li>
+            {% endfor %}
+        </ul>
+    </td>
+    <td>
+        ₹{% with total=0 %}
+            {% for item in order.items.all %}
+                {% with total=total|add:item.price %}
+                {% endwith %}
+            {% endfor %}
+            {{ total|floatformat:2 }}
+        {% endwith %}
+    </td>
+</tr>
+{% endfor %}
+        <div class="text-center py-5">
+            <img src="{% static 'assets/images/empty_orders.svg' %}" alt="No Orders" class="img-fluid mb-3" style="max-width: 250px;">
+            <h5 class="text-muted">You haven’t placed any orders yet.</h5>
+            <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Shop Now</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

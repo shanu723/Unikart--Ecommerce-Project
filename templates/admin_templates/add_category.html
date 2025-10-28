@@ -1,0 +1,47 @@
+{% extends 'admin_templates/admin_dashboard.html' %}
+{% block content %}
+
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Add New Category</h5>
+          </div>
+          <div class="card-body">
+            <!-- Display messages (success/error) -->
+            {% if messages %}
+              <div class="alert alert-dismissible fade show" role="alert">
+                {% for message in messages %}
+                  <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+           
+            
+            <form method="POST" enctype="multipart/form-data">
+              {% csrf_token %}
+              
+              <div class="form-group">
+                <label for="name">Category Name</label>
+                <input type="text" class="form-control" id="name" name="name" placeholder="Enter category name" required>
+              </div>
+
+              <label for="status">Active Status:</label>
+<input type="checkbox" id="status" name="status">
+
+
+             
+              <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-success">Save Category</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

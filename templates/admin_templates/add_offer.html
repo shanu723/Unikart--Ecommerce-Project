@@ -1,0 +1,133 @@
+{% extends 'admin_templates/admin_dashboard.html' %} 
+
+{% block content %}
+<div class="content-wrapper">
+    <div class="page-header">
+        <h3 class="page-title"> Add New Offer </h3>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Offers</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Add Offer</li>
+            </ol>
+        </nav>
+    </div>
+    <div class="row">
+        <div class="col-12 grid-margin stretch-card">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Offer Details</h4>
+                    <p class="card-description"> Fill in the details for the new offer </p>
+                    <form class="forms-sample" method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="id_title">Offer Title</label>
+                            <input type="text" class="form-control" id="id_title" name="title" placeholder="e.g., Summer Sale, 10% Off TVs">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_discount_type">Discount Type</label>
+                            <select class="form-control" id="id_discount_type" name="discount_type" required>
+                                <option value="percentage">Percentage</option>
+                                <option value="flat">Flat</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_dis_value">Discount Value</label>
+                            <input type="number" class="form-control" id="id_dis_value" name="dis_value" placeholder="e.g., 10 for 10%, 500 for ₹500" min="0" required>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="form-check">
+                                <label class="form-check-label">
+                                    <input type="checkbox" class="form-check-input" id="id_is_active" name="is_active" checked>
+                                    Is Active
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_valid_from">Valid From</label>
+                            <input type="datetime-local" class="form-control" id="id_valid_from" name="valid_from" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_valid_to">Valid To</label>
+                            <input type="datetime-local" class="form-control" id="id_valid_to" name="valid_to" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="id_offer_type">Offer Type</label>
+                            <select class="form-control" id="id_offer_type" name="offer_type" required>
+                                <option value="">Select Offer Type</option>
+                                <option value="category">Category Offer</option>
+                                <option value="product">Product Offer</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="category_field" style="display: none;">
+                            <label for="id_category">Category</label>
+                            <select class="form-control" id="id_category" name="category">
+                                <option value="">Select Category (Optional)</option>
+                                {% for category in categories %}
+                                    <option value="{{ category.pk }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="product_field" style="display: none;">
+                            <label for="id_product">Product</label>
+                            <select class="form-control" id="id_product" name="product">
+                                <option value="">Select Product (Optional)</option>
+                                {% for product in products %}
+                                    <option value="{{ product.pk }}">{{ product.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary mr-2">Submit</button>
+                        <button type="reset" class="btn btn-light">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const offerTypeSelect = document.getElementById('id_offer_type');
+        const categoryField = document.getElementById('category_field');
+        const productField = document.getElementById('product_field');
+        const categorySelect = document.getElementById('id_category');
+        const productSelect = document.getElementById('id_product');
+
+        function toggleOfferTypeFields() {
+            const selectedType = offerTypeSelect.value;
+
+            // Reset and hide both fields first
+            categoryField.style.display = 'none';
+            productField.style.display = 'none';
+            categorySelect.removeAttribute('required');
+            productSelect.removeAttribute('required');
+            categorySelect.value = ''; // Clear selected value
+            productSelect.value = ''; // Clear selected value
+
+            if (selectedType === 'category') {
+                categoryField.style.display = 'block';
+                categorySelect.setAttribute('required', 'required'); // Make required if selected
+            } else if (selectedType === 'product') {
+                productField.style.display = 'block';
+                productSelect.setAttribute('required', 'required'); // Make required if selected
+            }
+        }
+
+        // Initial call to set correct visibility on page load
+        toggleOfferTypeFields();
+
+        // Add event listener for changes to the offer type select
+        offerTypeSelect.addEventListener('change', toggleOfferTypeFields);
+    });
+</script>
+{% endblock %}

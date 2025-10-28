@@ -1,0 +1,42 @@
+{% extends 'admin_templates/admin_dashboard.html' %}
+{% load static %}
+{% block content %}
+
+<div class="container mt-4">
+  <h2>Coupon List</h2>
+  <a href="{% url 'add_coupon' %}" class="btn btn-primary mb-3">Add Coupon</a>
+
+  <table class="table table-bordered table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Code</th>
+        <th>Discount</th>
+        <th>Active</th>
+        <th>Valid From</th>
+        <th>Valid To</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for coupon in coupons %}
+      <tr>
+        <td>{{ coupon.id }}</td>
+        <td>{{ coupon.code }}</td>
+        <td>{{ coupon.discount_amount }}</td>
+        <td>{{ coupon.active }}</td>
+        <td>{{ coupon.valid_from|date:"Y-m-d H:i" }}</td>
+        <td>{{ coupon.valid_to|date:"Y-m-d H:i" }}</td>
+        <td>
+          <a href="{% url 'edit_coupon' coupon.id %}" class="btn btn-sm btn-warning">Edit</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" class="text-center">No coupons found</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

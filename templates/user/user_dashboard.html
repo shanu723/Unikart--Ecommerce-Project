@@ -61,17 +61,21 @@
 </style>
 
 </head>
-{% if messages %}
-    <div>
-        {% for message in messages %}
-            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    </div>
-{% endif %}
 
 <body>
+    {% if messages %}
+    <div class="container mt-3">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
     <!--? Preloader Start -->
     <div id="preloader-active">
         <div class="preloader d-flex align-items-center justify-content-center">
@@ -104,7 +108,7 @@
                                             <li><a href="{% static 'product_details.html' %}"> Product Details</a></li>
                                         </ul>
                                     </li>
-                                    <li><a href="contact.html">Contact</a></li>
+                                    <li><a href="{% url 'contact' %}">Contact</a></li>
                                     {% if user.is_authenticated and not user.is_superuser %}
                                     <li><a href="#">{{ user.username }}</a>
                                         <ul class="submenu">
@@ -155,7 +159,7 @@
                         <div class="row justify-content-between align-items-center">
                             <div class="col-xl-8 col-lg-8 col-md-8 col-sm-8">
                                 <div class="hero__caption">
-                                    <h1 data-animation="fadeInLeft" data-delay=".4s" data-duration="2000ms">Select Your New Perfect Style</h1>
+                                    <h1 data-animation="fadeInLeft" data-delay=".4s" data-duration="2000ms">Select Your New Perfect Television</h1>
                                     <p data-animation="fadeInLeft" data-delay=".7s" data-duration="2000ms">Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat is aute irure.</p>
                                     <!-- Hero-btn -->
                                     <div class="hero__btn" data-animation="fadeInLeft" data-delay=".8s" data-duration="2000ms">
@@ -280,9 +284,9 @@
         </div>
         <!-- Gallery Area End -->
         <!--? Popular Items Start -->
-        <div class="popular-items section-padding30">
+        <!--<div class="popular-items section-padding30">
             <div class="container">
-                <!-- Section tittle -->
+                <!-- Section tittle 
                 <div class="row justify-content-center">
                     <div class="col-xl-7 col-lg-8 col-md-10">
                         <div class="section-tittle mb-70 text-center">
@@ -395,7 +399,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- Button -->
+                <!-- Button 
                 <div class="row justify-content-center">
                     <div class="room-btn pt-70">
                         <a href="catagori.html" class="btn view-btn1">View More Products</a>
@@ -403,8 +407,8 @@
                 </div>
             </div>
         </div>
-        <!-- Popular Items End -->
-        <!--? Video Area Start -->
+        <!-- Popular Items End 
+        <!--? Video Area Start 
         <div class="video-area">
             <div class="container-fluid">
                 <div class="row align-items-center">
@@ -414,7 +418,7 @@
                     </div>
                     </div>
                 </div>
-                <!-- Arrow -->
+                <!-- Arrow 
                 <div class="thumb-content-box">
                     <div class="thumb-content">
                         <h3>Next Video</h3>
@@ -422,7 +426,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div>-->
         <!-- Video Area End -->
         <!--? Watch Choice  Start-->
         <div class="watch-area section-padding30">

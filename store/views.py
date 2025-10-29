@@ -121,7 +121,7 @@ def verify_otp(request,username):
                 messages.error(request,'otp expried.try again')
                 return redirect('signup')
 
-            # Create user and profile
+            
             user = User.objects.create_user(
                 username=signup_data['username'],
                 password=signup_data['password'],
@@ -132,11 +132,11 @@ def verify_otp(request,username):
 
             profile, created = User_profile.objects.get_or_create(user=user)
 
-            # Login the user
+            
             user.backend = 'django.contrib.auth.backends.ModelBackend'
-            login(request, user)  # log in BEFORE flushing anything
+            login(request, user)  
 
-            # Clear only OTP-related session keys, not the whole session
+            # Clearing otp keys
             for key in ['signup_data', 'signup_otp', 'signup_otp_time']:
                 if key in request.session:
                     del request.session[key]
@@ -179,8 +179,7 @@ def unblock_user(request,user_id):
 
 
 
-def user_dashboard(request):
-    return render(request,'user/user_dashboard.html')
+
 @login_required
 @user_passes_test(lambda u:u.is_superuser)
 def admin_dashboard(request):
@@ -250,9 +249,7 @@ def product_list(request):
 
 
 def add_product(request):
-    print(request.POST)
-    print(request.FILES)
-
+    
     categories = Category.objects.all()
     if request.method == 'POST':
         try:
@@ -265,7 +262,7 @@ def add_product(request):
             
             category = Category.objects.get(id=category_id)
 
-            # Create Product
+
             product = Product.objects.create(
                 name=product_name,
                 brand=brand,
@@ -275,7 +272,7 @@ def add_product(request):
                 category=category
             )
 
-            # Create Variations
+        
             size = request.POST.getlist('size[]')
             original_price = request.POST.getlist('original_price[]')
             
@@ -292,7 +289,7 @@ def add_product(request):
                     status=is_active
                 )
 
-            # Create Highlights (key-value)
+        
             keys = request.POST.getlist('highlight_keys[]')
             values = request.POST.getlist('highlight_values[]')
 
@@ -300,7 +297,7 @@ def add_product(request):
                 if k.strip() and v.strip():
                     Highlight.objects.create(product=product, key=k.strip(), value=v.strip())
 
-                       # Save Product Images
+                       
             for image in request.FILES.getlist('product_images'):
                 ProductImages.objects.create(product=product, product_image=image)
 
@@ -347,7 +344,7 @@ def edit_product(request,product_id):
                     status=is_active
                 )
 
-            # Update highlights
+            
             product.highlights.all().delete()
             keys = request.POST.getlist('highlight_keys[]')
             values = request.POST.getlist('highlight_values[]')
@@ -355,7 +352,6 @@ def edit_product(request,product_id):
                 if k.strip() and v.strip():
                     Highlight.objects.create(product=product, key=k.strip(), value=v.strip())
 
-            # Update images
             if request.FILES.getlist('product_images'):
                 product.productimages.all().delete()
                 for image in request.FILES.getlist('product_images'):
@@ -472,7 +468,7 @@ def add_offer(request):
         if form.is_valid():
             offer = form.save(commit=False)
             offer_type = form.cleaned_data.get('offer_type')
-            offer.save()  # save first to have ID
+            offer.save()  
 
             if offer_type == 'product':
                 product_id = request.POST.get('product')
@@ -581,11 +577,11 @@ def add_to_cart(request, product_id, size):
 def cart(request):
     items = CartItem.objects.filter(user=request.user)
 
-    # attach the final price and line total for each cart item
+    
     for item in items:
         try:
             variation = Variation.objects.get(product=item.product, size=item.size)
-            item.unit_price, _ = get_best_price(variation)  # final price from your function
+            item.unit_price, _ = get_best_price(variation)  
         except Variation.DoesNotExist:
             item.unit_price = 0
 
@@ -610,7 +606,7 @@ def update_cart_item(request):
         item.quantity = quantity
         item.save()
 
-        # recalculate line total
+    
         try:
             variation = Variation.objects.get(product=item.product, size=item.size)
             unit_price, _ = get_best_price(variation)
@@ -720,7 +716,7 @@ def buy_now(request, product_id, size):
     product = get_object_or_404(Product, id=product_id)
     variation = get_object_or_404(Variation, product=product, size=size)
 
-    final_price, discount = get_best_price(variation)  # Unpack properly
+    final_price, discount = get_best_price(variation)  
 
     cart_item, created = CartItem.objects.get_or_create(
         user=request.user,
@@ -749,7 +745,7 @@ def check_out(request):
         messages.error(request, "Please select at least one item to checkout.")
         return redirect('cart')
 
-    # Only include selected items
+
     items = CartItem.objects.filter(user=user, id__in=selected_ids)
 
     subtotal=sum(item.unit_price * item.quantity for item in items)
@@ -787,7 +783,7 @@ def check_out(request):
 def create_order(request):
     if request.method == 'POST':
         try:
-            # Convert string to float, then multiply by 100 if needed
+            
             amount = int(float(request.POST.get("amount"))*100)
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
             payment = client.order.create({
@@ -992,7 +988,7 @@ def place_orders(request):
 
         if payment_method == 'cod':
             order.payment_method = 'Cash on Delivery'
-            order.status = 'Confirmed'  # optional
+            order.status = 'Confirmed'  
             order.save()
             request.session['order_id'] = order.id
             return redirect('order_confirmation')
@@ -1047,7 +1043,7 @@ def download_invoice_pdf(request, order_id):
 def add_to_wishlist(request, product_id):
     product = get_object_or_404(Product, id=product_id)
 
-    # Check if this product is already in wishlist
+    
     if Wishlist.objects.filter(user=request.user, product=product).exists():
         messages.info(request, "Product already in wishlist.")
     else:

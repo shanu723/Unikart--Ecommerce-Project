@@ -64,7 +64,7 @@ document.getElementById('addMoneyForm').addEventListener('submit', function(e) {
                     body: formData
                 }).then(() => {
                     alert("Payment successful! Wallet updated.");
-                    window.location.href = "{% url 'profile' %}";
+                    window.location.href = "{% url 'wallet' %}";
                 });
             },
             theme: {

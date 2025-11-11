@@ -7,21 +7,32 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
 from django.utils import timezone
+from datetime import timedelta,datetime
+import openpyxl
+from openpyxl.utils import get_column_letter
+from .models import Order
 from django.shortcuts import render,redirect
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib.auth import authenticate, login,logout
 from django.db import transaction
-from django.db.models import Min,Max
+from django.db.models import Min,Max,Sum
 from django.contrib import messages
 from datetime import timedelta
-from .models import Product, Variation, Highlight, ProductImages,UserOTP,Category,Offer,UserProfile,Address,Order,CartItem,Order,Wallet,Wishlist,Coupon,OrderItem
+from .models import Product, Variation, Highlight, ProductImages,UserOTP,Category,Offer,UserProfile,Address,Order,CartItem,Order,Wallet,Wishlist,Coupon,OrderItem,ReturnRequest
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse,HttpResponse
 import json
+from django.template.loader import get_template
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+
 from decimal import Decimal
 from django.views.decorators.csrf import csrf_exempt
 from .forms import OfferForm
 from store.utils import get_best_price
+from xhtml2pdf import pisa
 
 # Create your views here.
 def home(request):
@@ -130,7 +141,7 @@ def verify_otp(request,username):
             user.is_active = True
             user.save()
 
-            profile, created = User_profile.objects.get_or_create(user=user)
+            profile, created = UserProfile.objects.get_or_create(user=user)
 
             
             user.backend = 'django.contrib.auth.backends.ModelBackend'
@@ -144,9 +155,9 @@ def verify_otp(request,username):
             messages.success(request,'Account verified.')
             return redirect('/profile/')
         else:
-            message.error(request,'Invalid otp')
-            return redner(request,'login.html')    
-
+            messages.error(request,'Invalid otp')
+            return render(request,'login.html')    
+    return render(request, 'verify_otp.html', {'username': username})
 
 def user_list(request):
     filter_status = request.GET.get('status','all')
@@ -183,7 +194,16 @@ def unblock_user(request,user_id):
 @login_required
 @user_passes_test(lambda u:u.is_superuser)
 def admin_dashboard(request):
-    return render(request,'admin_templates/admin_dashboard.html')
+    total_sales = Order.objects.filter(status='Deliverd').aggregate(Sum('total'))['total__sum'] or 0
+    total_orders = Order.objects.count()
+    total_customers = User.objects.count()
+
+    context = {
+        'total_sales':total_sales,
+        'total_orders':total_orders,
+        'total_customers':total_customers,
+    }
+    return render(request,'admin_templates/admin_dashboard.html',context)
 
 def category_list(request):
     categories=Category.objects.filter(status=True)
@@ -240,10 +260,10 @@ def product_list(request):
     paginator=Paginator(products,10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    is_paginated = True
-    return render(request, 'admin_templates/products.html', {'products': products,
+    
+    return render(request, 'admin_templates/products.html', {
     'page_obj':page_obj,
-    'is_paginated':is_paginated})
+    'search_product':search_product})
 
 
 
@@ -383,14 +403,24 @@ def edit_product(request,product_id):
 def shop(request):
     is_authenticated = request.user.is_authenticated
     sort= request.GET.get('sort','newest')
+    query = request.GET.get('q')
+
 
     products = Product.objects.filter(status=True)
+
+    if query:
+        products = products.filter(name__icontains=query)
     if sort == 'low_to_high':
         products =products.annotate(min_price=Min('variation__original_price')).order_by('min_price')
     elif sort=='high_to_low':
         products=products.annotate(min_price=Min('variation__original_price')).order_by('-min_price')
+    elif sort == 'a_to_z':
+        products = products.order_by('name')
+    elif sort == 'z_to_a':
+        products= products.order_by('-name')    
+
     else :
-        products=Product.objects.all().order_by('-created_at')  
+        products=products.order_by('-created_at')
 
     paginator =Paginator(products,9)
     page_number = request.GET.get('page')
@@ -692,11 +722,11 @@ def apply_coupon(request):
             return redirect('checkout')    
         try:
             coupon = Coupon.objects.get(
-                code=code,
-                active = True,
-                valid_from__lte= timezone.now(),
-                valid_to__gte= timezone.now()
-            )       
+                code__iexact=code,
+                active=True,
+                valid_from__lte=timezone.now(),
+                valid_to__gte=timezone.now()
+            )
             
             request.session["coupon_id"]= coupon.id     
             messages.success(request, f"Coupon '{coupon.code}' applied successfully!")
@@ -731,77 +761,7 @@ def buy_now(request, product_id, size):
 
     return redirect('checkout')
 
-@login_required(login_url='login')
-def check_out(request):
-    user = request.user
 
-    if request.method == "POST":
-        
-        selected_ids=request.POST.getlist('selected_items')
-    else:
-        selected_ids = CartItem.objects.filter(user=user).values_list('id', flat=True)
-
-    if not selected_ids:
-        messages.error(request, "Please select at least one item to checkout.")
-        return redirect('cart')
-
-
-    items = CartItem.objects.filter(user=user, id__in=selected_ids)
-
-    subtotal=sum(item.unit_price * item.quantity for item in items)
-    shipping=50 if subtotal>500 else 0
-    discount=0
-    coupon=None
-
-    coupon_id = request.session.get('coupon_id')
-    if coupon_id:
-        try:
-            coupon = Coupon.objects.get(id=coupon_id, active=True)
-            discount = coupon.discount_amount
-        except Coupon.DoesNotExist:
-            discount=0
-            request.session.pop('coupon_id', None)
-
-    total=subtotal-discount+shipping
-        
-    for item in items:
-        item.line_total=item.unit_price*item.quantity
-
-    user_addresses=Address.objects.filter(user=user)    
-
-    context = {'items': items,
-    'subtotal': subtotal,
-    'shipping': shipping,
-    'discount': discount,
-    'total':total,
-    'coupon': coupon,
-    'user_addresses':user_addresses}
-    return render(request, 'checkout.html', context)
-
-
-@csrf_exempt
-def create_order(request):
-    if request.method == 'POST':
-        try:
-            
-            amount = int(float(request.POST.get("amount"))*100)
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-            payment = client.order.create({
-                "amount": amount,  
-                "currency": "INR",
-                "payment_capture": "1",
-
-            })
-            return JsonResponse({
-                'order':payment,
-                'razorpay_key':settings.RAZORPAY_KEY_ID
-            })
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-    return JsonResponse({'error':'Invalid request method'},status=400)        
-
-def payment_success(request):
-    return render(request,'user/payment_sucess.html')
 def profile_view(request):
     user = request.user
     addresses = Address.objects.filter(user=user)
@@ -953,24 +913,268 @@ def wallet_payment_success(request):
             wallet.save()
             
 
-        return redirect('profile')
-  
+        return redirect('wallet')
+    return render(request,'profile')    
+@login_required  
 def myorders_view(request):
     user_orders=Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request,'user/myorders.html',{'user_orders':user_orders})
+    paginator = Paginator(user_orders,10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request,'user/myorders.html',{'user_orders':user_orders,'page_obj':page_obj})
+
+@login_required
+def order_detail(request,order_id):
+    order= get_object_or_404(Order,id=order_id,user = request.user)
+    return render(request,'user/order_details.html',{'order':order})
+
+
+
+@login_required
+def return_order(request,order_id):
+    order = get_object_or_404(Order,id = order_id,user=request.user)
+
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        ReturnRequest.objects.create(order=order,user=request.user,reason=reason,status='Pending')
+        order.status = "Return Requested"
+        order.save()
+        messages.success(request,f"Request return for Order #{order.id} has been sent successfully")
+        return redirect('myorders')
+    return render(request,'user/return_order.html',{'order':order})    
+
+
+@login_required(login_url='login')
+def order_confirmation(request):
+    order_id = request.session.get('order_id')
+    if not order_id:
+        messages.error(request,"No recent order found")
+        return redirect('cart')
+
+    try:
+        order = Order.objects.get(id=order_id,user=request.user)
+        order_items = OrderItem.objects.filter(order=order)
+    except Order.DoesNotExist:
+        messages.error(request,"Order not found")
+        return redirect('cart')
+
+    context = {
+        'order':order,
+        'order_items':order_items,
+        'address':order.address,
+    }    
+    return render(request,'user/order_confirmation.html',context)
+
+def logout_view(request):
+    logout(request)
+    request.session.flush()
+    return render(request,'index.html')     
+
+
+def login_error(request):
+    messages.error(request, "There was an error during social authentication.")
+    return redirect('login')
+
+
+def order_list(request):
+    orders=Order.objects.all().order_by("-created_at")
+    paginator=Paginator(orders,10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request,'admin_templates/order_list.html',{'page_obj':page_obj})
+
+def update_order_status(request,order_id):
+    if request.method =='POST':
+        order = get_object_or_404(Order,id = order_id)
+        new_status= request.POST.get('status')
+        if new_status in dict(Order.STATUS_CHOICES):
+            order.status = new_status
+            order.save(update_fields=['status'])
+            order.refresh_from_db()
+            messages.success(request,f'Order #{order.id} updated to {new_status}')
+        else:
+            messages.success(request,"Invalid status selected")
+        return redirect(request.META.get('HTTP_REFERER','user/order_list'))        
+def download_invoice_pdf(request, order_id):
+    pass
+@login_required
+def add_to_wishlist(request, product_id):
+    product = get_object_or_404(Product,id=product_id)
+
+    
+    if Wishlist.objects.filter(user=request.user, product=product).exists():
+        messages.info(request, "Product already in wishlist.")
+    else:
+        Wishlist.objects.create(user=request.user, product=product)
+        messages.success(request, "Product added successfully!")
+
+    return redirect('wishlist')
+
+
+def wishlist(request):
+    wishlist_items= Wishlist.objects.filter(user=request.user).select_related('product')
+    return render(request,'user/wishlist.html',{'wishlist_items':wishlist_items})
+
+def remove_wishlist(request,id):
+    item = get_object_or_404(Wishlist,id=id,user=request.user)
+    item.delete()
+    messages.success(request,"Product removed from your wishlist")
+    return redirect('wishlist')
+
+
+@login_required(login_url='login')
+def check_out(request):
+    user = request.user
+
+    if request.method == "POST":
+        
+        selected_ids=request.POST.getlist('selected_items')
+    else:
+        selected_ids = CartItem.objects.filter(user=user).values_list('id', flat=True)
+
+    if not selected_ids:
+        messages.error(request, "Please select at least one item to checkout.")
+        return redirect('cart')
+
+
+    items = CartItem.objects.filter(user=user, id__in=selected_ids)
+
+    subtotal=sum(item.unit_price * item.quantity for item in items)
+    shipping=50 if subtotal>500 else 0
+    discount=0
+    coupon=None
+
+    coupon_id = request.session.get('coupon_id')
+    if coupon_id:
+        try:
+            coupon = Coupon.objects.get(id=coupon_id, active=True)
+            discount = coupon.discount_amount
+        except Coupon.DoesNotExist:
+            discount=0
+            request.session.pop('coupon_id', None)
+
+    total=subtotal-discount+shipping
+        
+    for item in items:
+        item.line_total=item.unit_price*item.quantity
+
+    user_addresses = Address.objects.filter(user=user)
+    default_address = user_addresses.filter(is_default=True).first()   
+
+    selected_address_id = request.POST.get('selected_address') or (
+        default_address.id if default_address else None
+    )
+   
+
+    context = {'items': items,
+    'subtotal': subtotal,
+    'shipping': shipping,
+    'discount': discount,
+    'total':total,
+    'coupon': coupon,
+    'user_addresses':user_addresses,
+    'selected_addresses_id': selected_address_id}
+    return render(request, 'checkout.html', context)
+
+
+@csrf_exempt
+def create_order(request):
+    if request.method == 'POST':
+        try:
+            
+            amount = int(float(request.POST.get("amount"))*100)
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            payment = client.order.create({
+                "amount": amount,  
+                "currency": "INR",
+                "payment_capture": "1",
+
+            })
+            return JsonResponse({
+                'order':payment,
+                'razorpay_key':settings.RAZORPAY_KEY_ID
+            })
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+    return JsonResponse({'error':'Invalid request method'},status=400)        
+
+
+def cancel_order(request,order_id):
+    order = Order.objects.get(id=order_id,user = request.user)
+    wallet = Wallet.objects.get(user = request.user)
+
+    order.status = 'Cancelled'
+
+    if order.payment_method == 'Wallet':
+        wallet.balance +=order.total
+        wallet.save()
+        order.save()
+        messages.success(request,"Order canceled and amount refunded to the wallet")
+    else:
+        order.save()
+        messages.info(request,"this order cannot be refunded to wallet")
+
+    return redirect('myorders')    
+
+def payment_success(request):
+    payment_id = request.GET.get('payment_id')
+    user = request.user
+
+    order = Order.objects.filter(user=user,status='Pending').last()
+
+    if order:
+        order.status = 'Paid'
+        order.payment_method='razorpay'
+        order.save()
+    return render(request,'user/payment_sucess.html',{'order':order})    
+
 @login_required(login_url='login')
 def place_orders(request):
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
+        wallet = Wallet.objects.get(user=request.user)
+        selected_address = request.POST.get('selected_address')
         user = request.user
-        
+        if selected_address == "new":
+            street = request.POST.get('street')
+            city = request.POST.get('city')
+            district = request.POST.get('district')
+            state = request.POST.get('state')
+            pincode = request.POST.get('pincode')
+
+            address = Address.objects.create(
+                user = request.user,
+                street = street,
+                city = city,
+                district = district,
+                state = state,
+                pincode = pincode
+            )
+        else:
+            address = Address.objects.get(id = selected_address,user = request.user)    
+        payment_method = request.POST.get("payment_method")
+        subtotal = float(request.POST.get("subtotal", 0))
+        shipping = float(request.POST.get("shipping", 0))
+        discount = float(request.POST.get("discount", 0))
+        total = float(request.POST.get("total", 0))
+
+        order = Order.objects.create(
+            user=request.user,
+            address = address,
+            subtotal=subtotal,
+            shipping=shipping,
+            discount=discount,
+            total=total,
+            payment_method=payment_method,
+            status="Pending"  # default
+        )
       
         cart_items = CartItem.objects.filter(user=user)
         if not cart_items.exists():
             messages.error(request, "Your cart is empty.")
             return redirect('cart')
 
-        order = Order.objects.create(user=user)    
+ 
         for item in cart_items:
             variation = item.product.variation_set.filter(size=item.size).first()
             if variation:
@@ -993,66 +1197,228 @@ def place_orders(request):
             request.session['order_id'] = order.id
             return redirect('order_confirmation')
 
-        elif payment_method == 'razorpay':
-            return redirect('razorpay_payment')
+
+        elif payment_method == 'Wallet':
+            if wallet.balance >= Decimal(str(total)):
+                wallet.balance -= Decimal(str(total))
+                wallet.save()
+
+                order.payment_method = 'Wallet'
+                order.status = 'Confirmed'
+                order.save()
+
+                messages.success(request,"Payment Successfull using Wallet")
+                request.session['order_id'] = order.id 
+                return redirect('order_confirmation')
+
+            else:
+                messages.error(request,"Insufficiant wallet balance")
+                return redirect('checkout')    
+        elif payment_method == "razorpay":
+            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            payment = client.order.create({
+                "amount": int(total * 100),  # convert to paisa
+                "currency": "INR",
+                "payment_capture": "1"
+            })
+            order.razorpay_order_id = payment["id"]
+            order.save()
+            return JsonResponse({
+                "id": payment["id"],
+                "amount": payment["amount"],
+                "currency": payment["currency"],
+                "razorpay_key": settings.RAZORPAY_KEY_ID
+            })
 
         else:
             messages.error(request, "Invalid payment method selected.")
             return redirect('checkout')
     else:
-        return redirect('cart')        
-@login_required(login_url='login')
-def order_confirmation(request):
-    order_id = request.session.get('order_id')
-    if not order_id:
-        messages.error(request,"No recent prder found")
         return redirect('cart')
 
-    try:
-        order = Order.objects.get(id=order_id,user=request.user)
-        order_items = OrderItem.objects.filter(order=order)
-    except Order.DoesNotExist:
-        messages.error(request,"Order not found")
-        return redirect('cart')
 
+def download_invoice_pdf(request,order_id):
+    order = Order.objects.get(id=order_id,user=request.user)
+    order_items = OrderItem.objects.filter(order=order)
+
+    template_path = 'user/invoice.html'
     context = {
         'order':order,
         'order_items':order_items,
-    }    
-    return render(request,'user/order_confirmation.html',context)
+        'address':order.address,
+    }
 
-def logout_view(request):
-    logout(request)
-    request.session.flush()
-    return render(request,'index.html')     
+    template = get_template(template_path)
+    html = template.render(context)
 
+    response = HttpResponse(content_type='application/pdf')
+    response['Content Deisposition'] = f"attachment; filname ='invoice_{order.id}.pdf"
 
-def login_error(request):
-    messages.error(request, "There was an error during social authentication.")
-    return redirect('login')
+    pisa_status = pisa.CreatePDF(html,dest=response)
 
+    if pisa_status.err:
+        return HttpResponse('Error generating PDF',status=500)
 
-def order_list(request):
-    orders=Order.objects.all().order_by("-created_at")
-    return render(request,'admin_templates/order_list.html')
+    return response    
 
+def return_requests(request):
+    requests_list = ReturnRequest.objects.all().order_by('-created_at')
+    return render(request,'admin_templates/return_requests.html',{'requests':requests_list})  
 
-def download_invoice_pdf(request, order_id):
-    pass
-@login_required
-def add_to_wishlist(request, product_id):
-    product = get_object_or_404(Product, id=product_id)
+def update_return_status(request,request_id,action):
+    return_request= get_object_or_404(ReturnRequest,id = request_id)
 
-    
-    if Wishlist.objects.filter(user=request.user, product=product).exists():
-        messages.info(request, "Product already in wishlist.")
+    if action == 'accept':
+        return_request.status = 'Accepted'
+        return_request.order.staus = 'Return Accepted '
+    elif action == 'reject':
+        return_request.status = 'Rejected'
+        return_request.order.status ='Return Rejected'
+
+    return_request.order.save()    
+    return_request.save()
+
+    return redirect('return_requests')    
+
+def sales_report(request):
+    today = timezone.now().date()
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    filter_type = request.GET.get('filter_type','daily')
+
+    if start_date and isinstance(start_date,str):
+        start_date = datetime.strptime(start_date,"%Y-%m-%d").date()
+    if end_date and isinstance(end_date,str):    
+        end_date = datetime.strptime(end_date,"%Y-%m-%d").date()
     else:
-        Wishlist.objects.create(user=request.user, product=product)
-        messages.success(request, "Product added successfully!")
+        if filter_type == 'daily':
+            start_date = end_date = today
+        elif filter_type == 'weekly':
+            start_date = today - timedelta(days=7)
+            end_date = today
+        elif filter_type == 'monthly':
+            start_date = today.replace(day=1)
+            end_date = today     
 
-    return redirect('wishlist')
+    orders = Order.objects.filter(
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date,
+    
+    )      
+
+    total_sales = orders.aggregate(Sum('total'))['total__sum'] or 0                
+    total_orders = orders.count()
+    total_discount = orders.aggregate(Sum('discount'))['discount__sum'] or 0
 
 
-def wishlist(request):
-    wishlist, created = Wishlist.objects.get_or_create(user=request.user)
-    return render(request,'user/wishlist.html',{"wishlist":wishlist})
+       
+    context = {
+        'orders':orders,
+        'total_orders':total_orders,
+        'total_sales':total_sales,
+        'total_discount':total_discount,
+        'start_date':start_date,
+        'end_date':end_date,
+        'filter_type':filter_type
+    }
+
+    return render(request,'admin_templates/sales_report.html',context)
+
+def download_sales_pdf(request):
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    filter_type = request.GET.get('filter_type')
+
+    orders = Order.objects.all()
+
+    if filter_type == 'day':
+        orders = orders.filter(created_at__date=timezone.now().date())
+    elif filter_type == 'week':
+        start_week = timezone.now() - timedelta(days=7)
+        orders = orders.filter(created_at__gte=start_week)
+    elif filter_type == 'month':
+        start_month = timezone.now().replace(day=1)
+        orders = orders.filter(created_at__gte=start_month)
+    elif start_date and end_date:
+        start_date = datetime.strptime(start_date,"%Y-%m-%d")
+        end_date = datetime.strptime(end_date,"%Y-%m-%d")
+        orders = orders.filter(created_at__range=[start_date,end_date])
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment;filename ="sales_report.pdf"'
+
+    doc = SimpleDocTemplate(response,pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    elements.append(Paragraph("Sales Report",styles['Title']))
+
+    data = [["Order ID","Customer","Total Amount","Discount","Date"]]
+    for order in orders:
+        data.append([
+            str(order.id),
+            str(order.user.username),
+            f"₹{order.total}",
+            f"₹{order.discount or 0} ",
+            order.created_at.strftime("%Y-%m-%d")
+        ])
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),colors.lightblue),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    ]))
+    elements.append(table)
+    doc.build(elements)
+    return response
+
+def download_sales_excel(request):
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    filter_type = request.GET.get('filter_type')
+
+    orders = Order.objects.all()
+
+    if filter_type == 'day':
+        orders = orders.filter(created_at__date=timezone.now().date())
+    elif filter_type == 'week':
+        start_week = timezone.now() - timedelta(days=7)
+        orders = orders.filter(created_at__gte=start_week)
+    elif filter_type == 'month':
+        start_month = timezone.now().replace(day=1)
+        orders = orders.filter(created_at__gte=start_month)
+    elif start_date and end_date:
+        orders = orders.filter(created_at__range=[start_date,end_date])
+
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Sales Report"
+
+    headers = ["Order ID", "Customer", "Total Amount", "Discount", "Date"]
+    worksheet.append(headers)
+
+    for order in orders:
+        worksheet.append([
+            order.id,
+            order.user.username,
+            order.total,
+            order.discount or 0,
+            order.created_at.strftime('%Y-%m-%d')
+
+        ])                        
+    for i,column in enumerate(headers,1):
+        column_letter = get_column_letter(i)
+        worksheet.column_dimensions[column_letter].width=20
+
+        response = HttpResponse(
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )    
+        response['Content-Disposition']= 'attachment; filename="sales_report.xlsx"'
+
+        workbook.save(response)
+    return response
+
+

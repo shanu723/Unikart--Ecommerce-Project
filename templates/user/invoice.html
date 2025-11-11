@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice #{{ order.id }}</title>
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            margin: 30px;
+            color: #222;
+            font-size: 14px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .header, .footer {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .section-title {
+            margin-top: 25px;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #aaa;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f3f3f3;
+        }
+
+        .summary {
+            margin-top: 20px;
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .footer {
+            font-size: 12px;
+            color: #555;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Invoice</h2>
+
+    <p><strong>Order ID:</strong> #{{ order.id }}</p>
+    <p><strong>Date:</strong> {{ order.created_at|date:"d M Y" }}</p>
+    <p><strong>Payment Method:</strong> {{ order.payment_method }}</p>
+
+    {% if order.address %}
+    <div class="section-title">Billing / Shipping Address</div>
+    <p>
+        {{ order.address.full_name }}<br>
+        {{ order.address.street_address }}<br>
+        {{ order.address.city }}, {{ order.address.state }} - {{ order.address.pincode }}<br>
+        Phone: {{ order.address.phone }}
+    </p>
+    {% endif %}
+
+    <div class="section-title">Order Summary</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price (₹)</th>
+                <th>Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order_items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.price|floatformat:2 }}</td>
+                <td>{{ item.quantity|floatformat:0|add:item.price|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <p>Subtotal: ₹{{ order.subtotal|default:"0.00" }}</p>
+        <p>Shipping: ₹{{ order.shipping_cost|default:"0.00" }}</p>
+        <p>Grand Total: ₹{{ order.get_total|default:"0.00" }}</p>
+    </div>
+
+    <div class="footer">
+        Thank you for your purchase!<br>
+        This is a computer-generated invoice — no signature required.
+    </div>
+
+</body>
+</html>

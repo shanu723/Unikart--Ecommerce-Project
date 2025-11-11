@@ -1,61 +1,94 @@
 {% extends 'base.html' %}
-{% load static %}
-{% load tz %}
+{% load static tz %}
 
 {% block content %}
 <div class="container py-5">
-    <h2 class="text-center mb-4">My Orders</h2>
+    <h2 class="text-center mb-4 fw-bold">My Orders</h2>
 
-    {% if user_orders %}
+    {% if page_obj %}
         <div class="table-responsive shadow rounded">
-            <table class="table align-middle mb-0">
-                <thead class="table-dark">
+            <table class="table align-middle mb-0 table-hover" style="min-width: 100%;">
+                <thead class="table-dark text-center">
                     <tr>
-                        <th scope="col">Order ID</th>
-                        <th scope="col">Date</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Items</th>
-                        <th scope="col">Total (₹)</th>
+                        <th scope="col" style="width:10%;">Order ID</th>
+                        <th scope="col" style="width:20%;">Date</th>
+                        <th scope="col" style="width:15%;">Status</th>
+                        <th scope="col" style="width:35%;">Items</th>
+                        <th scope="col" style="width:10%;">Total (₹)</th>
+                        <th scope="col" style="width:10%;">Action</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for order in user_orders %}
-<tr>
-    <td>#{{ order.id }}</td>
-    <td>
-        {% timezone "Asia/Kolkata" %}
-            {{ order.created_at|date:"d M Y, h:i A" }}
-        {% endtimezone %}
-    </td>
-    <td>
-        {% if order.status == "Delivered" %}
-            <span class="badge bg-success">{{ order.status }}</span>
-        {% elif order.status == "Cancelled" %}
-            <span class="badge bg-danger">{{ order.status }}</span>
-        {% elif order.status == "Processing" %}
-            <span class="badge bg-warning text-dark">{{ order.status }}</span>
+                <tbody class="text-center">
+                    {% for order in page_obj %}
+                    <tr>
+                        <td class="fw-semibold">#{{ order.id }}</td>
+                        <td>
+                            {% timezone "Asia/Kolkata" %}
+                                {{ order.created_at|date:"d M Y, h:i A" }}
+                            {% endtimezone %}
+                        </td>
+                        <td>
+                            {% if order.status == "Delivered" %}
+                                <span class="badge bg-success px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
+                            {% elif order.status == "Cancelled" %}
+                                <span class="badge bg-danger px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
+                            {% elif order.status == "Processing" %}
+                                <span class="badge bg-warning text-dark px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <ul class="list-unstyled mb-0 text-start">
+                                {% for item in order.items.all %}
+                                    <li>{{ item.product.name }} × {{ item.quantity }} — ₹{{ item.price }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <td class="fw-bold text-success">₹{{ order.total|floatformat:2 }}</td>
+                        <<td>
+    <div class="d-flex justify-content-center gap-2">
+        <a href="{% url 'order_detail' order.id %}" class="btn btn-outline-info btn-sm">
+            View Details
+        </a>
+        
+        {% if order.status != "Cancelled" %}
+            <a href="{% url 'return_order' order.id %}" class="btn btn-outline-danger btn-sm">Return</a>
         {% else %}
-            <span class="badge bg-secondary">{{ order.status }}</span>
+            <button class="btn btn-secondary btn-sm" disabled>Return</button>
         {% endif %}
-    </td>
-    <td>
-        <ul class="list-unstyled mb-0">
-            {% for item in order.items.all %}
-                <li>{{ item.product.name }} × {{ item.quantity }} — ₹{{ item.price }}</li>
-            {% endfor %}
-        </ul>
-    </td>
-    <td>
-        ₹{% with total=0 %}
-            {% for item in order.items.all %}
-                {% with total=total|add:item.price %}
-                {% endwith %}
-            {% endfor %}
-            {{ total|floatformat:2 }}
-        {% endwith %}
-    </td>
-</tr>
-{% endfor %}
+    </div>
+</td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-center mt-4">
+            <nav aria-label="Page navigation">
+                <ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if num == page_obj.number %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    {% else %}
         <div class="text-center py-5">
             <img src="{% static 'assets/images/empty_orders.svg' %}" alt="No Orders" class="img-fluid mb-3" style="max-width: 250px;">
             <h5 class="text-muted">You haven’t placed any orders yet.</h5>

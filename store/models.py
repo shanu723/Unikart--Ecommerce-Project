@@ -162,6 +162,12 @@ class Order(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="Pending")
 
+
+    subtotal = models.DecimalField(max_digits=10, decimal_places = 2, default=0)
+    discount = models.DecimalField(max_digits=10, decimal_places =2,default=0)
+    shipping = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    total = models.DecimalField(max_digits=10,decimal_places=2,default=2)
+    payment_method = models.CharField(max_length=50,blank=True,null=True)
     def __str__(self):
         return f"Order{self.id} by {self.user.username}"
 
@@ -173,6 +179,21 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity}*{self.product.name}"
+
+class ReturnRequest(models.Model):
+    STATUS_CHOICES=[
+        ('Pending','Pending'),
+        ('Accepted','Accepted'),
+        ('Rejected','Rejected'),
+    ]      
+    order = models.ForeignKey(Order,on_delete=models.CASCADE)
+    user = models.ForeignKey(User,on_delete=models.CASCADE)
+    reason = models.TextField()
+    status = models.CharField(max_length=10,choices=STATUS_CHOICES,default='Pending')
+    created_at = models.DateTimeField(default=timezone.now) 
+
+    def __str__(self):
+        return f"REturn Request for Order #{self.order.id}({self.status})"
 
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

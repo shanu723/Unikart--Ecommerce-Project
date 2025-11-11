@@ -80,226 +80,255 @@
 </head>
 
    
-
-    <main>
-       
-        <!-- Hero Area -->
-        <div class="slider-area">
-             {% if messages %}
-    <div class="mt-3">
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+<main>
+    <!-- Hero Area -->
+    <div class="slider-area">
+        {% if messages %}
+        <div class="mt-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            {% endfor %}
         </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-            <div class="single-slider slider-height2 d-flex align-items-center">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-xl-12">
-                            <div class="hero-cap text-center">
-                                <h2>Checkout</h2>
-                            </div>
+        {% endif %}
+        <div class="single-slider slider-height2 d-flex align-items-center">
+            <div class="container">
+                <div class="row">
+                    <div class="col-xl-12">
+                        <div class="hero-cap text-center">
+                            <h2>Checkout</h2>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Checkout Area -->
-        <section class="checkout_area section_padding">
-            <div class="container">
-                {% if not items %}
-                    <div class="text-center">
-                        <h3>Your cart is empty</h3>
-                        <a href="{% url 'product_list' %}" class="btn btn-primary">Continue Shopping</a>
+    <!-- Checkout Area -->
+    <section class="checkout_area section_padding">
+        <div class="container">
+            {% if not items %}
+                <div class="text-center">
+                    <h3>Your cart is empty</h3>
+                    <a href="{% url 'shop' %}" class="btn btn-primary">Continue Shopping</a>
+                </div>
+            {% else %}
+            <div class="row">
+                <!-- Left Column -->
+                <div class="col-lg-8">
+                    
+                    <!-- Address Section -->
+                   <form method="post" action="{% url 'checkout' %}" id="checkoutForm">
+    {% csrf_token %}
+    
+    <!-- Default Address Section -->
+    <div class="checkout-section">
+        <h3><i class="fas fa-map-marker-alt"></i> Delivery Address</h3>
+
+        {% for address in user_addresses %}
+            {% if address.is_default %}
+            <div class="address-card default-address" id="defaultAddress">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5>{{ address.user.get_full_name|default:address.user.username }}</h5>
+                        <p class="mb-1">{{ address.street }}</p>
+                        <p class="mb-1">{{ address.city }}, {{ address.district }}</p>
+                        <p class="mb-1">{{ address.state }} - {{ address.pincode }}</p>
+                        <span class="badge bg-primary">Default</span>
                     </div>
-                {% else %}
-                    <form method="post" action="{% url 'checkout' %}"  id="checkoutForm">
-                        {% csrf_token %}
-                        <div class="row">
-                            <!-- Left Column - Checkout Details -->
-                            <div class="col-lg-8">
-                                
-                                <!-- Delivery Address Section -->
-                                <div class="checkout-section">
-                                    <h3><i class="fas fa-map-marker-alt"></i> Delivery Address</h3>
-                                    
-                                    {% for address in user_addresses %}
-                                    {% if address.is_default %}
-                                        <div class="address-card default-address" id="address-{{ address.id }}">
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div>
-                                                    <h5>{{ address.user.get_full_name|default:address.user.username }}</h5>
-                                                    <p class="mb-1">{{ address.street }}</p>
-                                                    <p class="mb-1">{{ address.city }}, {{ address.district }}</p>
-                                                    <p class="mb-1">{{ address.state }} - {{ address.pincode }}</p>
-                                                    <span class="badge bg-primary">Default</span>
-                                                </div>
-                                            </div>
-                                            <input type="radio" name="selected_address" value="{{ address.id }}" checked style="display: none;">
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                                    
-                                    <!-- Other Addresses -->
-                                    {% for address in user_addresses %}
-                                    {% if not address.is_default %}
-                                        <div class="address-card" id="address-{{ address.id }}">
-                                            <div class="d-flex justify-content-between align-items-start">
-                                                <div>
-                                                    <h5>{{ address.user.get_full_name|default:address.user.username }}</h5>
-                                                    <p class="mb-1">{{ address.street }}</p>
-                                                    <p class="mb-1">{{ address.city }}, {{ address.district }}</p>
-                                                    <p class="mb-1">{{ address.state }} - {{ address.pincode }}</p>
-                                                </div>
-                                            </div>
-                                            <input type="radio" name="selected_address" value="{{ address.id }}" style="display: none;">
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                                    <div class="text-center mt-3">
-                                        <a href="{% url 'profile' %}" class="btn btn-outline-primary">
-                                            <i class="fas fa-plus"></i> Add New Address
-                                        </a>
-                                    </div>
+                </div>
+                <    <!-- Default address checkbox -->
+    <div class="form-check mt-2">
+        <input class="form-check-input" type="checkbox" id="useDefaultAddress" name="selected_address" value="{{ address.id }}" checked>
+        <label class="form-check-label" for="useDefaultAddress">
+            Deliver to this address
+        </label>
+    </div>
+</div>
+
+            {% endif %}
+        {% endfor %}
+
+        <!-- Change Address Button -->
+        <div class="text-center mt-3">
+            <button type="button" id="changeAddressBtn" class="btn btn-outline-primary">
+                <i class="fas fa-exchange-alt"></i> Deliver to another address
+            </button>
+        </div>
+
+        <!-- Hidden New Address Form -->
+        <div id="newAddressForm" class="mt-4" style="display: none;">
+            <h5 class="mb-3">Enter New Delivery Address</h5>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <input type="text" name="street" class="form-control" placeholder="Street">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="city" class="form-control" placeholder="City">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="district" class="form-control" placeholder="District">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="state" class="form-control" placeholder="State">
+                </div>
+                <div class="col-md-6">
+                    <input type="text" name="pincode" class="form-control" placeholder="Pincode">
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="button" id="cancelAddressBtn" class="btn btn-secondary me-3">Cancel</button>
+                <div class="form-check d-inline-block">
+                    <input class="form-check-input" type="checkbox"  name= 'selected_address' id="newDeliveryAddress" value="new">
+                    <label class="form-check-label" for="newDeliveryAddress">
+                        Deliver to this address
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+                    <!-- Coupon Section -->
+                    <div class="checkout-section mt-4">
+                        <h3><i class="fas fa-tag"></i> Coupon Code</h3>
+                        {% if coupon %}
+                            <div class="coupon-section d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Applied Coupon:</strong> {{ coupon.code }} <br>
+                                    <small>Discount: ₹{{ coupon.discount_amount }}</small>
+                                </div>
+                                <form method="POST" action="{% url 'apply_coupon' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="remove_coupon" value="1">
+                                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <form method="POST" action="{% url 'apply_coupon' %}" class="row mt-3">
+                                {% csrf_token %}
+                                <div class="col-md-8">
+                                    <input type="text" name="coupon_code" class="form-control" placeholder="Enter coupon code" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-primary">Apply Coupon</button>
                                 </div>
                             </form>
-                                <!-- Coupon Section -->
-                               <div class="checkout-section">
-    <h3><i class="fas fa-tag"></i> Coupon Code</h3>
+                        {% endif %}
+                    </div>
 
-    {% if coupon %}
-        <div class="coupon-section">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>Applied Coupon:</strong> {{ coupon.code }} <br>
-                    <small>Discount: ₹{{ coupon.discount_amount }}</small>
-                </div>
-                <form method="POST" action="{% url 'apply_coupon' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="remove_coupon" value="1">
-                    <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-                </form>
-            </div>
-        </div>
-                {% else %}
-                    <form method="POST" action="{% url 'apply_coupon' %}" class="row">
+                    <!-- Payment Method Section -->
+                    <form method="POST" action="{% url 'place_order' %}" id="placeOrderForm" class="mt-4">
                         {% csrf_token %}
-                        <div class="col-md-8">
-                            <input type="text" name="coupon_code" class="form-control" placeholder="Enter coupon code" required>
-                        </div>
-                        <div class="col-md-4">
-                            <button type="submit" class="btn btn-primary">Apply Coupon</button>
-                        </div>
-                    </form>
-                {% endif %}
-            </div>
-
-                                <form method="POST" action="{% url 'place_order' %}"  id="placeOrderForm">
-                                    {% csrf_token %}
-                                <!-- Payment Method Section -->
-                                <div class="checkout-section">
-                                    <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
-                                    
-                                    <div class="payment-method selected" >
-                                        <div class="d-flex align-items-center">
-                                            <input type="radio" name="payment_method" value="cod" checked>
-                                            <div class="ml-3">
-                                                <h5 class="mb-1">Cash on Delivery</h5>
-                                                <p class="mb-0 text-muted">Pay when your order is delivered</p>
-                                            </div>
-                                        </div>
+                        <div class="checkout-section">
+                            <h3><i class="fas fa-credit-card"></i> Payment Method</h3>
+                            <div class="payment-method selected">
+                                <div class="d-flex align-items-center">
+                                    <input type="radio" name="payment_method" value="cod" checked>
+                                    <div class="ml-3">
+                                        <h5 class="mb-1">Cash on Delivery</h5>
+                                        <p class="mb-0 text-muted">Pay when your order is delivered</p>
                                     </div>
-                                    
-                                    <div class="payment-method" >
-                                        <div class="d-flex align-items-center">
-                                            <input type="radio" name="payment_method" value="razorpay">
-                                            <div class="ml-3">
-                                                <h5 class="mb-1">Razor Pay</h5>
-                                                <p class="mb-0 text-muted">Pay securely with your card</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    
                                 </div>
                             </div>
-
-                            <!-- Right Column - Order Summary -->
-                            <div class="col-lg-4">
-                                <div class="checkout-section">
-                                    <h3><i class="fas fa-shopping-bag"></i> Order Summary</h3>
-                                    
-                                    <!-- Product Items -->
-                                    <div class="mb-3">
-                                        {% for item in items %}
-                                            <div class="product-item">
-                                                {% with img=item.product.productimages.first %}
-                                                    <img src="{% if img %}{{ img.product_image.url }}{% else %}{% static 'assets/img/gallery/popular1.png' %}{% endif %}" 
-                                                         alt="{{ item.product.name }}" class="product-image">
-                                                {% endwith %}
-                                                <div class="flex-grow-1">
-                                                    <h6 class="mb-1">{{ item.product.name }}</h6>
-                                                    <small class="text-muted">Size: {{ item.size }}" | Qty: {{ item.quantity }}</small>
-                                                </div>
-                                                <div class="text-right">
-                                                    <strong>₹{{ item.line_total|floatformat:2 }}</strong>
-                                                </div>
-                                            </div>
-                                        {% endfor %}
+                            <div class="payment-method">
+                                <div class="d-flex align-items-center">
+                                    <input type="radio" name="payment_method" value="razorpay">
+                                    <div class="ml-3">
+                                        <h5 class="mb-1">Razor Pay</h5>
+                                        <p class="mb-0 text-muted">Pay securely with your card</p>
                                     </div>
-                                    
-                                    <!-- Price Breakdown -->
-                                     <p>Debug: subtotal={{ subtotal }} | shipping={{ shipping }} | discount={{ discount }} | total={{ total }}</p>
-
-                                    <div class="price-breakdown">
-                                        <div class="price-row">
-                                            <span>Subtotal:</span>
-                                            <span>₹{{ subtotal|floatformat:2 }}</span>
-                                        </div>
-                                        
-                                        {% if discount > 0 %}
-                                            <div class="price-row text-success">
-                                                <span>Discount ({{ coupon.code }}):</span>
-                                                <span>-₹{{ discount|floatformat:2 }}</span>
-                                            </div>
-                                        {% endif %}
-                                        
-                                        <div class="price-row">
-                                            <span>Shipping:</span>
-                                            <span>₹{{ shipping|floatformat:2 }}</span>
-                                        </div>
-                                        
-                                        <div class="price-row total">
-                                            <span>Total:</span>
-                                            <span>₹{{ total|floatformat:2 }}</span>
-                                        </div>
-                                    </div>
-                                    
-                                   <button type="submit" id="placeOrderBtn" class="btn btn-success btn-lg btn-block">
-                                        Place Order - ₹{{ total|floatformat:2 }}
-                                    </button>
-
-                                </form>
-                                    <!-- Security Notice -->
-                                    <div class="mt-3 text-center">
-                                        <small class="text-muted">
-                                            <i class="fas fa-shield-alt"></i> Your payment information is secure and encrypted
-                                        </small>
+                                </div>
+                            </div>
+                            <div class="payment-method">
+                                <div class="d-flex align-items-center">
+                                    <input type="radio" name="payment_method" value="Wallet" id="walletOption">
+                                    <div class="ml-3">
+                                        <h5 class="mb-1">Wallet Pay</h5>
+                                        <p class="mb-0 text-muted">Use Unikart Wallet for seamless transaction </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </form>
-                {% endif %}
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-lg-4">
+                    <div class="checkout-section">
+                        <h3><i class="fas fa-shopping-bag"></i> Order Summary</h3>
+
+                        <!-- Product Items -->
+                        <div class="mb-3">
+                            {% for item in items %}
+                            <div class="product-item d-flex align-items-center mb-2">
+                                {% with img=item.product.productimages.first %}
+                                <img src="{% if img %}{{ img.product_image.url }}{% else %}{% static 'assets/img/gallery/popular1.png' %}{% endif %}"
+                                     alt="{{ item.product.name }}" class="product-image" style="width: 60px; height: 60px; margin-right: 10px;">
+                                {% endwith %}
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ item.product.name }}</h6>
+                                    <small class="text-muted">Size: {{ item.size }} | Qty: {{ item.quantity }}</small>
+                                </div>
+                                <div class="text-right">
+                                    <strong>₹{{ item.line_total|floatformat:2 }}</strong>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Price Breakdown -->
+                        <div class="price-breakdown">
+                            <div class="price-row">
+                                <span>Subtotal:</span>
+                                <span>₹{{ subtotal|floatformat:2 }}</span>
+                            </div>
+                            {% if discount > 0 %}
+                            <div class="price-row text-success">
+                                <span>Discount ({{ coupon.code }}):</span>
+                                <span>-₹{{ discount|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="price-row">
+                                <span>Shipping:</span>
+                                <span>₹{{ shipping|floatformat:2 }}</span>
+                            </div>
+                            <div class="price-row total">
+                                <span>Total:</span>
+                                <span>₹{{ total|floatformat:2 }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Inputs -->
+                        <input type="hidden" name="subtotal" value="{{ subtotal }}">
+                        <input type="hidden" name="shipping" value="{{ shipping }}">
+                        <input type="hidden" name="discount" value="{{ discount }}">
+                        <input type="hidden" name="total" value="{{ total }}">
+
+                        <!-- Place Order Button -->
+                        <button type="submit" id="placeOrderBtn" class="btn btn-success btn-lg btn-block mt-3">
+                            Place Order - ₹{{ total|floatformat:2 }}
+                        </button>
+
+                        <div class="mt-3 text-center">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt"></i> Your payment information is secure and encrypted
+                            </small>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </section>
-    </main>
+            </form>
+            {% endif %}
+        </div>
+    </section>
+</main>
+
 {% endblock %}
     <!-- Footer -->
     <footer class="footer-area footer-padding">
@@ -324,17 +353,46 @@
 <script src="{% static 'assets/js/main.js' %}"></script>
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // ================= Address Selection =================
-    document.querySelectorAll('.address-card').forEach(card => {
-        card.addEventListener('click', function() {
-            document.querySelectorAll('.address-card').forEach(c => c.classList.remove('selected'));
-            this.classList.add('selected');
-            this.querySelector('input[type="radio"]').checked = true;
-        });
+<<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const changeBtn = document.getElementById("changeAddressBtn");
+    const cancelBtn = document.getElementById("cancelAddressBtn");
+    const newForm = document.getElementById("newAddressForm");
+    const placeOrderForm = document.getElementById("placeOrderForm");
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+
+    const useDefault = document.getElementById("useDefaultAddress");
+    const useNew = document.getElementById("newDeliveryAddress");
+
+    // ================= Toggle new address form =================
+    changeBtn.addEventListener("click", () => {
+        newForm.style.display = "block";
+        changeBtn.style.display = "none";
+        useDefault.checked = false; // uncheck default when opening new
     });
 
+    cancelBtn.addEventListener("click", () => {
+        newForm.style.display = "none";
+        changeBtn.style.display = "inline-block";
+        useNew.checked = false;
+        useDefault.checked = true; // revert to default
+    });
+
+    // ================= Ensure only one checkbox is checked =================
+    if (useDefault && useNew) {
+        useDefault.addEventListener("change", () => {
+            if (useDefault.checked) useNew.checked = false;
+        });
+
+        useNew.addEventListener("change", () => {
+            if (useNew.checked) useDefault.checked = false;
+        });
+    }
+
+    // Address handling logic removed from here - moved to payment handler below
+});
+
+    
     // ================= ScrollUp Initialization =================
     if ($.scrollUp) {
         $.scrollUp({
@@ -350,82 +408,82 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ================= Payment Selection =================
-    function selectPayment(method) {
-        document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
-        const radio = document.querySelector(`input[name="payment_method"][value="${method}"]`);
-        if (!radio) return;
-        radio.checked = true;
-        radio.dispatchEvent(new Event('change'));
-        radio.closest('.payment-method').classList.add('selected');
-    }
-
     document.querySelectorAll('.payment-method').forEach(div => {
         div.addEventListener('click', function() {
-            const method = this.querySelector('input[name="payment_method"]').value;
-            selectPayment(method);
+            document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+            this.classList.add('selected');
+            this.querySelector('input[type="radio"]').checked = true;
         });
     });
 
-    // ================= Razorpay Payment =================
-    function payWithRazorpay(totalAmount) {
-        fetch("{% url 'create_order' %}", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: "amount=" + totalAmount
-        })
-        .then(res => res.json())
-        .then(order => {
-            var options = {
-                key: order.razorpay_key,
-                amount: order.amount,
-                currency: "INR",
-                name: "Unikart",
-                description: "Order Payment",
-                order_id: order.id,
-                handler: function(response) {
-                    window.location.href = "/payment_success/?payment_id=" + response.razorpay_payment_id;
-                },
-                prefill: {
-                    name: "{{ user.get_full_name }}",
-                    email: "{{ user.email }}"
-                },
-                theme: { color: "#3399cc" }
-            };
-            var rzp = new Razorpay(options);
-            rzp.open();
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error creating Razorpay order. Please try again.");
+    // ================= Place Order / Payment Logic =================
+    const placeOrderForm = document.getElementById("placeOrderForm");
+    const placeOrderBtn = document.getElementById("placeOrderBtn");
+
+    if (placeOrderBtn) {
+        placeOrderBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+
+            const selectedAddress = document.querySelector("input[name='selected_address']:checked");
+            if (!selectedAddress) {
+                alert("Please select a delivery address.");
+                return;
+            }
+
+            // Add selected address to the form
+            const addressInput = document.createElement('input');
+            addressInput.type = 'hidden';
+            addressInput.name = 'selected_address';
+            addressInput.value = selectedAddress.value;
+            placeOrderForm.appendChild(addressInput);
+
+            const paymentMethod = document.querySelector("input[name='payment_method']:checked").value;
+
+            if (paymentMethod === "razorpay") {
+                const formData = new FormData(placeOrderForm);
+                fetch("{% url 'place_order' %}", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-CSRFToken": "{{ csrf_token }}"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    const options = {
+                        key: data.razorpay_key,
+                        amount: data.amount,
+                        currency: data.currency,
+                        name: "Unikart",
+                        description: "Order Payment",
+                        order_id: data.id,
+                        handler: function(response) {
+                            window.location.href = "{% url 'order_confirmation' %}";
+                        },
+                        prefill: {
+                            name: "{{ request.user.first_name }} {{ request.user.last_name }}",
+                            email: "{{ request.user.email }}"
+                        },
+                        theme: {
+                            color: "#3399cc"
+                        }
+                    };
+                    const rzp = new Razorpay(options);
+                    rzp.open();
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("An error occurred while initiating payment.");
+                });
+            } else { // For COD
+                placeOrderForm.submit();
+            }
         });
     }
 
-    // ================= Place Order =================
-    function handlePlaceOrder() {
-        const selectedRadio = document.querySelector('input[name="payment_method"]:checked');
-        if (!selectedRadio) {
-            alert("Please select a payment method.");
-            return;
-        }
-
-        const selected = selectedRadio.value;
-
-        if (selected === 'razorpay') {
-            payWithRazorpay("{{ total|floatformat:2 }}");
-        } else if (selected === 'cod') {
-            const form = document.getElementById('checkoutForm');
-            if (form) form.submit();
-        }
-    }
-
-    const placeOrderBtn = document.getElementById('placeOrderBtn');
-    if (placeOrderBtn) {
-        placeOrderBtn.addEventListener('click', handlePlaceOrder);
-    }
-
-}); // ✅ properly closed the DOMContentLoaded function
 </script>
 {% endblock %}

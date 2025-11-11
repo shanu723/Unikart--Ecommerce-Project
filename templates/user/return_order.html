@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h4 class="mb-3">Return Order #{{ order.id }}</h4>
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="reason" class="form-label">Reason for Return</label>
+            <textarea name="reason" id="reason" class="form-control" required rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-danger">Confirm Return</button>
+        <a href="{% url 'myorders' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

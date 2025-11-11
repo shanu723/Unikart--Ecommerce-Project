@@ -1,24 +1,50 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<section class="wishlist-section">
+
+<section class="wishlist-section py-5">
   <div class="container">
     <h2 class="text-center mb-4">My Wishlist</h2>
+
     {% if wishlist_items %}
-      <div class="row">
-        {% for item in wishlist_items %}
-          <div class="col-md-4 mb-4">
-            <div class="card">
-              <img src="{{ item.product.image.url }}" class="card-img-top" alt="{{ item.product.name }}">
-              <div class="card-body text-center">
-                <h5 class="card-title">{{ item.product.name }}</h5>
-                <p class="card-text">₹{{ item.product.price }}</p>
-                <a href="{% url 'product_detail' item.product.id %}" class="btn btn-outline-primary">View Product</a>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <tbody>
+            {% for item in wishlist_items %}
+              <tr>
+                <td style="width: 120px;">
+                  {% if item.product.productimages.all %}
+                    <img src="{{ item.product.productimages.first.product_image.url }}" alt="{{ item.product.name }}" class="img-fluid rounded" style="max-width: 100px;">
+                  {% else %}
+                    <img src="{% static 'images/placeholder.png' %}" alt="No image" class="img-fluid rounded" style="max-width: 100px;">
+                  {% endif %}
+                </td>
+
+                <td>
+                  <strong>{{ item.product.name }}</strong>
+                  {% if item.product.brand %}
+                    <div class="text-muted small">{{ item.product.brand }}</div>
+                  {% endif %}
+                </td>
+
+                <td class="text-end">
+                  <a href="{% url 'product' item.product.id %}" class="btn btn-outline-primary btn-sm me-2">
+                    View Product
+                  </a>
+                  <a href="{% url 'remove_wishlist' item.id %}" class="btn btn-outline-danger btn-sm">
+                    Remove
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
+
+      <div class="text-center mt-4">
+        <a href="{% url 'shop' %}" class="btn btn-primary">Continue Shopping</a>
+      </div>
+
     {% else %}
       <div class="text-center">
         <img src="{% static 'images/empty_wishlist.png' %}" alt="Empty Wishlist" class="img-fluid" style="max-width:300px;">
@@ -28,4 +54,5 @@
     {% endif %}
   </div>
 </section>
+
 {% endblock %}

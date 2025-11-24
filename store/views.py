@@ -22,6 +22,9 @@ from .models import Product, Variation, Highlight, ProductImages,UserOTP,Categor
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse,HttpResponse
 import json
+import re
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 from django.template.loader import get_template
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 from reportlab.lib.pagesizes import A4
@@ -80,7 +83,10 @@ def signup_view(request):
         email=request.POST['email']
         password=request.POST['password']
         confirm_password=request.POST['confirm_password']
-
+        
+        if not re.match(r'^[A-Za-z0-1-]+$',username):
+            messages.error(request,"Uername can only conatain letters,numbers")
+            return redirect('signup')
         if password!=confirm_password:
             messages.error(request,'Passwords does not match')
             return redirect('signup')
@@ -102,7 +108,7 @@ def signup_view(request):
 
         send_mail(
             subject='Verfication mail',
-            message=f"Hai{username} This is your OTP{code}. iwll expires in 10 minutes",
+            message=f"Hai {username}, This is your OTP{code} for signup Unikart ecommerce website .It wll expires in 10 minutes",
             from_email="no-repaly@gmail.com",
             recipient_list=[email],
             fail_silently=False,
@@ -127,10 +133,10 @@ def verify_otp(request,username):
         if entered_otp==signup_otp:
             otp_time=timezone.datetime.fromisoformat(otp_time)
         
-            if timezone.now() - otp_time > timedelta(minutes=10):
-                request.session.flush()
+            if timezone.now() - otp_time > timedelta(minutes=2):
+                
                 messages.error(request,'otp expried.try again')
-                return redirect('signup')
+                return redirect('resend_otp',username = username)
 
             
             user = User.objects.create_user(
@@ -147,7 +153,7 @@ def verify_otp(request,username):
             user.backend = 'django.contrib.auth.backends.ModelBackend'
             login(request, user)  
 
-            # Clearing otp keys
+           
             for key in ['signup_data', 'signup_otp', 'signup_otp_time']:
                 if key in request.session:
                     del request.session[key]
@@ -155,10 +161,36 @@ def verify_otp(request,username):
             messages.success(request,'Account verified.')
             return redirect('/profile/')
         else:
-            messages.error(request,'Invalid otp')
-            return render(request,'login.html')    
+            messages.error(request,'Invalid otp.Try again')
+            return render(request,'verify_otp.html',{'username':username})    
     return render(request, 'verify_otp.html', {'username': username})
 
+def resend_otp(request,username):
+    signup_data = request.session.get('signup_data')
+    signup_otp = request.session.get ('signup_otp')
+
+    if not signup_data or signup_data['username'] != username:
+        messages.error(request,"Session expired.Please signup again")
+        return redirect('signup')
+
+    new_otp = str(random.randint(100000,999999))
+    request.session['signup_otp'] = new_otp
+    request.session['signup_otp_time'] = timezone.now().isoformat()
+
+    email = signup_data['email']
+
+    send_mail(
+        subject = "Verification Mail",
+        message = f"Hi {username}, This is your new otp {new_otp} for verifying your account for signup unikart ecommerce website",
+        from_email = "no-reply@gmail.com",
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+    
+    messages.success(request,"A new otp has been sent to your email")
+    return render(request,'verify_otp.html',{'username': username})    
+@login_required
 def user_list(request):
     filter_status = request.GET.get('status','all')
 
@@ -173,14 +205,14 @@ def user_list(request):
         'filter_status':filter_status
     })          
 
-
+@login_required
 def block_user(request,user_id):
     userprofile = get_object_or_404(UserProfile, user__id=user_id)
     userprofile.is_blocked=True
     userprofile.save()
     messages.success(request,'User blocked successfully')
     return redirect('user_list')
-
+@login_required
 def unblock_user(request,user_id):
     userprofile = get_object_or_404(UserProfile, user__id=user_id)
     userprofile.is_blocked=False
@@ -204,10 +236,11 @@ def admin_dashboard(request):
         'total_customers':total_customers,
     }
     return render(request,'admin_templates/admin_dashboard.html',context)
-
+@login_required
 def category_list(request):
     categories=Category.objects.filter(status=True)
     return render(request,'admin_templates/category.html',{'categories':categories})
+@login_required    
 def add_category(request):
     if request.method=='POST':
         name=request.POST.get('name')
@@ -223,7 +256,7 @@ def add_category(request):
             return redirect('category')
 
     return render(request,'admin_templates/add_category.html')      
-
+@login_required
 def edit_category(request,category_id):
     category=get_object_or_404(Category,id=category_id)
     if request.method=="POST":
@@ -240,7 +273,7 @@ def edit_category(request,category_id):
         messages.success(request,"Category updated successfully")
         return redirect('category')
     return render(request,'admin_templates/edit_category.html',{'category':category})    
-
+@login_required
 def delete_category(request,category_id):
     category=get_object_or_404(Category,id=category_id)
     category.status=False
@@ -267,7 +300,7 @@ def product_list(request):
 
 
 
-
+@login_required
 def add_product(request):
     
     categories = Category.objects.all()
@@ -318,7 +351,7 @@ def add_product(request):
                     Highlight.objects.create(product=product, key=k.strip(), value=v.strip())
 
                        
-            for image in request.FILES.getlist('product_images'):
+            for image in request.FILES.getlist('product_images[]'):
                 ProductImages.objects.create(product=product, product_image=image)
 
             messages.success(request, 'Product added successfully!')
@@ -331,7 +364,7 @@ def add_product(request):
 
     return render(request, 'admin_templates/add_product.html', {'categories': categories})
 
-
+@login_required
 def edit_product(request,product_id):
     product=get_object_or_404(Product,id=product_id)
     categories=Category.objects.all()
@@ -374,7 +407,7 @@ def edit_product(request,product_id):
 
             if request.FILES.getlist('product_images'):
                 product.productimages.all().delete()
-                for image in request.FILES.getlist('product_images'):
+                for image in request.FILES.getlist('product_images[]'):
                     ProductImages.objects.create(product=product, product_image=image)
 
             messages.success(request, 'Product updated successfully!')
@@ -400,13 +433,30 @@ def edit_product(request,product_id):
     return render(request, 'admin_templates/edit_product.html', context)
 
 @never_cache
+
 def shop(request):
     is_authenticated = request.user.is_authenticated
     sort= request.GET.get('sort','newest')
     query = request.GET.get('q')
+    categories = Category.objects.filter(status = True)
+    selected_categories = request.GET.getlist('category')
+   
 
+    products = Product.objects.filter(status=True)\
+                    .annotate(min_var_price=Min('variation__original_price'))
 
-    products = Product.objects.filter(status=True)
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+    if min_price and max_price:
+        min_price = int(min_price)
+        max_price = int(max_price)
+    if selected_categories:
+        products = products.filter(category__id__in=selected_categories)
+
+    if min_price and max_price:
+        products = products.filter(
+    min_var_price__gte=min_price,
+    min_var_price__lte=max_price)
 
     if query:
         products = products.filter(name__icontains=query)
@@ -429,20 +479,23 @@ def shop(request):
     context={
         'products':products,
         'is_authenticated':is_authenticated,
-        'current_sort':sort
+        'current_sort':sort,
+        'categories': categories,
     }
     return render(request,'shop.html',context)
+@login_required    
 def products(request):
     products=Product.objects.all()
     return render(request,'admin_templates/products.html',{'products':products})    
-def delete_product(request):
+@login_required    
+def delete_product(request,product_id):
     product=get_object_or_404(Product,id=product_id)
     product.status=False
     product.save()
     messages.success(request,"Product deleted successfully")
-    return redirect('product')
+    return redirect('products')
 
-
+@login_required
 def product_details(request, id):
     product = get_object_or_404(Product, id=id)
     variations = product.variation_set.all()
@@ -492,6 +545,7 @@ def contact(request):
 
 def about(request):
     return render(request, 'about.html')
+@login_required    
 def add_offer(request):
     if request.method == 'POST':
         form = OfferForm(request.POST)
@@ -599,7 +653,9 @@ def add_to_cart(request, product_id, size):
     if not created:
         cart_item.quantity += 1
         cart_item.save()
+    Wishlist.objects.filter(user=request.user,product = product).delete()
 
+    messages.success(request,"Item moved to cart successfully")
     return redirect('cart')
 
 @login_required(login_url='login')
@@ -664,11 +720,11 @@ def remove_cart_item(request, item_id):
         return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
 
-
+@login_required
 def coupon_list(request):
     coupons = Coupon.objects.all().order_by('-id')
     return render (request,'admin_templates/coupon_list.html',{'coupons':coupons})
-
+@login_required
 def add_coupon(request):
     if request.method =="POST":
         code = request.POST.get('code')
@@ -693,7 +749,7 @@ def add_coupon(request):
         return redirect('coupon_list')
 
     return render (request,'admin_templates/add_coupon.html')    
-
+@login_required
 def edit_coupon(request,id):
     coupon = get_object_or_404(Coupon,id=id)
 
@@ -735,9 +791,8 @@ def apply_coupon(request):
              messages.error(request, "Invalid coupon code.")
     return redirect("checkout")
 
-def add_to_wishlist(request):
-    pass 
-
+ 
+@login_required
 def wishlist(request):
     return render(request,'user/wishlist.html')
 
@@ -761,7 +816,7 @@ def buy_now(request, product_id, size):
 
     return redirect('checkout')
 
-
+@login_required
 def profile_view(request):
     user = request.user
     addresses = Address.objects.filter(user=user)
@@ -769,37 +824,66 @@ def profile_view(request):
     return render(request, "user/profile.html", {
         "user": user,
         "addresses": addresses,
-    
-    })
+        
+        })
 
+@login_required
+def update_profile(request): 
+    if request.method=='POST': 
+        user=request.user 
+        profile = user.profile 
+        
+        is_google_user = user.social_auth.filter(provider = 'google-oauth2').exists()
 
-def update_profile(request):
-    if request.method=='POST':
-        user=request.user
-        profile = user.profile
-
-        first_name=request.POST.get('first_name',user.first_name)
-        last_name=request.POST.get('last_name',user.last_name)
-        email=request.POST.get('email',user.email)
-        phone=request.POST.get('phone',profile.phone)
+        first_name = request.POST.get('first_name',user.first_name)
+        last_name = request.POST.get('last_name',user.last_name)
+        phone = request.POST.get('phone',profile.phone)
         profile_photo = request.FILES.get('profile_photo')
 
+        email_input = request.POST.get('email',user.email)
 
-        user.first_name=first_name
-        user.last_name=last_name
-        user.email=email
+        if is_google_user :
         
+            email=user.email
+        else:
+            email = email_input    
+        user.first_name = first_name
+        user.last_name = last_name
+        user.email = email
         user.save()
-        profile = user.profile
-        profile.phone=phone
+
+        profile.phone = phone
         if profile_photo:
-            profile.profile_photo = profile_photo
+            profile.profile_photo =profile_photo
         profile.save()
-       
-        messages.success(request, 'Profile updated successfully')
+
+        messages.success(request,'Profile updated successfully!')
         return redirect('profile')
 
-    return render(request, 'profile.html')
+    return render(request,'user/profile.html')        
+
+
+@login_required
+def change_password(request):
+    user = request.user
+    if not user.is_authenticated:
+        messages.error(request,"You need to login to change your password.")
+        return render(request,'login.html')
+    if not user.has_usable_password():
+        messages.error(request,"Google users cannot change passswrod here.")
+        return render(request,'user/user_dashboard.html')    
+    if request.method == 'POST':
+        form = PasswordChangeForm(user,request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request,user)
+            messages.success(request,"Password changed successfully")
+            return redirect('profile')
+    else:
+        form =PasswordChangeForm(user)
+    return render(request,'user/change_password.html',{'form':form})        
+
+    
 def address_list(request):
     addresses = Address.objects.filter(user=request.user)
     
@@ -982,24 +1066,51 @@ def order_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     return render(request,'admin_templates/order_list.html',{'page_obj':page_obj})
+ORDER_FLOW = {
+    "Pending": ["Processing", "Shipped", "Delivered"],
+    "Processing": ["Shipped", "Delivered"],
+    "Shipped": ["Delivered"],
+    "Delivered": [],
+    "Cancelled": []
+}
+@login_required
+def update_order_status(request, order_id):
+    if request.method == 'POST':
+        order = get_object_or_404(Order, id=order_id)
+        new_status = request.POST.get('status')
 
-def update_order_status(request,order_id):
-    if request.method =='POST':
-        order = get_object_or_404(Order,id = order_id)
-        new_status= request.POST.get('status')
-        if new_status in dict(Order.STATUS_CHOICES):
+        allowed_next = ORDER_FLOW.get(order.status, [])
+
+        if new_status in allowed_next:
             order.status = new_status
-            order.save(update_fields=['status'])
-            order.refresh_from_db()
-            messages.success(request,f'Order #{order.id} updated to {new_status}')
+            order.save()  # NO update_fields!!!
+            messages.success(request, f"Order #{order.id} updated to {new_status}")
         else:
-            messages.success(request,"Invalid status selected")
-        return redirect(request.META.get('HTTP_REFERER','user/order_list'))        
+            messages.error(
+                request,
+                f"Cannot change status from '{order.status}' to '{new_status}'"
+            )
+
+        return redirect(request.META.get('HTTP_REFERER', 'user/order_list'))
+      
 def download_invoice_pdf(request, order_id):
     pass
 @login_required
 def add_to_wishlist(request, product_id):
     product = get_object_or_404(Product,id=product_id)
+
+    
+    
+    if Wishlist.objects.filter(user=request.user,product = product).exists():
+        messages.info(request,"Product already in whichlist")
+    else:
+        Wishlist.objects.create(
+            user=request.user,
+            product = product,
+            
+        ) 
+        messages.success(request,"Product added successfully")
+    return redirect('wishlist')       
 
     
     if Wishlist.objects.filter(user=request.user, product=product).exists():
@@ -1028,11 +1139,13 @@ def check_out(request):
 
     if request.method == "POST":
         
-        selected_ids=request.POST.getlist('selected_items')
+        selected_ids=request.POST.getlist('selected_items[]')
     else:
         selected_ids = CartItem.objects.filter(user=user).values_list('id', flat=True)
+    print("Selected items:", request.POST.getlist('selected_items[]'))
 
-    if not selected_ids:
+    if not selected_ids or len(selected_ids) == 0:
+
         messages.error(request, "Please select at least one item to checkout.")
         return redirect('cart')
 
@@ -1081,9 +1194,43 @@ def check_out(request):
 def create_order(request):
     if request.method == 'POST':
         try:
-            
-            amount = int(float(request.POST.get("amount"))*100)
+            user = request.user
+
+            selected_ids = request.POST.getlist("selected_items[]")
+            cart_items = CartItem.objects.filter(
+                user=request.user,
+                id__in=selected_ids
+            )
+
+            if not cart_items.exists():
+                return JsonResponse({"error":"Cart is empty"},status = 400)
+
+            print("---- CART DEBUG ----")
+            print("Cart values:")
+            for item in cart_items:
+                print(
+                    "Product:", item.product.name,
+                    "| Unit Price:", item.unit_price,
+                    "| Quantity:", item.quantity,
+                    "| Total for this item:", item.unit_price * item.quantity
+                )
+            print("--------------------")    
+            total = sum(item.unit_price*item.quantity for item in cart_items)
+            shipping = 50 if total>500 else 0
+            coupon_id = request.session.get('coupon_id')
+            discount = 0
+            if coupon_id:
+                try :
+                    coupon = Coupon.objects.get(id=coupon_id,active=True)
+                    discount = coupon.discount_amount
+                except Coupon.DoesNotExist:
+                    discount = 0
+            final_amount = total+shipping-discount
+            amount = int(final_amount*100)
+
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+            print("Final price:", final_amount, "Amount in paisa:", amount)
+
             payment = client.order.create({
                 "amount": amount,  
                 "currency": "INR",
@@ -1103,7 +1250,16 @@ def cancel_order(request,order_id):
     order = Order.objects.get(id=order_id,user = request.user)
     wallet = Wallet.objects.get(user = request.user)
 
+    if order.status == 'Cancelled':
+        messages.info(request,"This order is already cancelled")
+        return redirect('myorders')
+
+
     order.status = 'Cancelled'
+    for item in order.items.all():
+        product = item.product
+        product.stock += item.quantity
+        product.save()
 
     if order.payment_method == 'Wallet':
         wallet.balance +=order.total
@@ -1135,106 +1291,114 @@ def place_orders(request):
         wallet = Wallet.objects.get(user=request.user)
         selected_address = request.POST.get('selected_address')
         user = request.user
+        print("POST data:", request.POST)
+        print("selected_address:", selected_address)
+        
         if selected_address == "new":
-            street = request.POST.get('street')
-            city = request.POST.get('city')
-            district = request.POST.get('district')
-            state = request.POST.get('state')
-            pincode = request.POST.get('pincode')
-
             address = Address.objects.create(
-                user = request.user,
-                street = street,
-                city = city,
-                district = district,
-                state = state,
-                pincode = pincode
+                user=user,
+                street=request.POST.get('street'),
+                city=request.POST.get('city'),
+                district=request.POST.get('district'),
+                state=request.POST.get('state'),
+                pincode=request.POST.get('pincode'),
             )
         else:
-            address = Address.objects.get(id = selected_address,user = request.user)    
-        payment_method = request.POST.get("payment_method")
-        subtotal = float(request.POST.get("subtotal", 0))
-        shipping = float(request.POST.get("shipping", 0))
-        discount = float(request.POST.get("discount", 0))
-        total = float(request.POST.get("total", 0))
+            address = Address.objects.get(id=selected_address, user=user)
 
-        order = Order.objects.create(
-            user=request.user,
-            address = address,
-            subtotal=subtotal,
-            shipping=shipping,
-            discount=discount,
-            total=total,
-            payment_method=payment_method,
-            status="Pending"  # default
-        )
-      
+        
         cart_items = CartItem.objects.filter(user=user)
         if not cart_items.exists():
             messages.error(request, "Your cart is empty.")
             return redirect('cart')
 
- 
+        
+        subtotal = sum(item.unit_price * item.quantity for item in cart_items)
+        shipping = 50 if subtotal > 500 else 0
+
+        discount = 0
+        coupon_id = request.session.get("coupon_id")
+        if coupon_id:
+            try:
+                coupon = Coupon.objects.get(id=coupon_id, active=True)
+                discount = coupon.discount_amount
+            except Coupon.DoesNotExist:
+                pass
+
+        total = subtotal + shipping - discount
+
+        order = Order.objects.create(
+            user=user,
+            address=address,
+            subtotal=subtotal,
+            shipping=shipping,
+            discount=discount,
+            total=total,
+            payment_method=payment_method,
+            status="Pending",
+        )
+
+    
         for item in cart_items:
             variation = item.product.variation_set.filter(size=item.size).first()
             if variation:
                 price, _ = get_best_price(variation)
+
+                if variation.stock < item.quantity:
+                    messages.error(request, f"Not enough stock for {variation.product.name} ({variation.size} Inch)")
+                    return redirect('cart')
+
+                variation.stock -= item.quantity
+                variation.save()
             else:
                 price = item.unit_price
+
             OrderItem.objects.create(
                 order=order,
-                product = item.product,
-                quantity = item.quantity,
-                price = price
+                product=item.product,
+                quantity=item.quantity,
+                price=price
             )
 
         cart_items.delete()
 
+        
         if payment_method == 'cod':
             order.payment_method = 'Cash on Delivery'
-            order.status = 'Confirmed'  
+            order.status = 'Confirmed'
             order.save()
             request.session['order_id'] = order.id
             return redirect('order_confirmation')
 
-
+        
         elif payment_method == 'Wallet':
-            if wallet.balance >= Decimal(str(total)):
-                wallet.balance -= Decimal(str(total))
+            if wallet.balance >= total:
+                wallet.balance -= total
                 wallet.save()
 
                 order.payment_method = 'Wallet'
                 order.status = 'Confirmed'
                 order.save()
 
-                messages.success(request,"Payment Successfull using Wallet")
-                request.session['order_id'] = order.id 
+                messages.success(request, "Payment successful using Wallet")
+                request.session['order_id'] = order.id
                 return redirect('order_confirmation')
-
             else:
-                messages.error(request,"Insufficiant wallet balance")
-                return redirect('checkout')    
+                messages.error(request, "Insufficient wallet balance")
+                return redirect('checkout')
+            
+
+        # RAZORPAY
         elif payment_method == "razorpay":
-            client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-            payment = client.order.create({
-                "amount": int(total * 100),  # convert to paisa
-                "currency": "INR",
-                "payment_capture": "1"
-            })
-            order.razorpay_order_id = payment["id"]
             order.save()
+            request.session['order_id'] = order.id
             return JsonResponse({
-                "id": payment["id"],
-                "amount": payment["amount"],
-                "currency": payment["currency"],
-                "razorpay_key": settings.RAZORPAY_KEY_ID
+                "order_id": order.id,
+                "amount": int(total*100),  # in paise
+                "currency": "INR",
+                "razorpay_key": settings.RAZORPAY_KEY,
             })
 
-        else:
-            messages.error(request, "Invalid payment method selected.")
-            return redirect('checkout')
-    else:
-        return redirect('cart')
 
 
 def download_invoice_pdf(request,order_id):
@@ -1270,7 +1434,7 @@ def update_return_status(request,request_id,action):
 
     if action == 'accept':
         return_request.status = 'Accepted'
-        return_request.order.staus = 'Return Accepted '
+        return_request.order.status = 'Return Accepted '
     elif action == 'reject':
         return_request.status = 'Rejected'
         return_request.order.status ='Return Rejected'

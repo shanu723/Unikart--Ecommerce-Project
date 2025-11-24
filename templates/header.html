@@ -36,14 +36,14 @@
                                 <ul id="navigation">  
                                     <li><a href="{% url 'user_dashboard' %}">Home</a></li>
                                     <li><a href="{% url 'shop' %}">shop</a></li>
-                                    <li><a href="about.html">about</a></li>
+                                    <li><a href="{% url 'about' %}">about</a></li>
                                     <li class="hot"><a href="#">Latest</a>
                                         <ul class="submenu">
                                             <li><a href="{% static 'shop.html' %}"> Product list</a></li>
                                             <li><a href="{% static 'product_details.html' %}"> Product Details</a></li>
                                         </ul>
                                     </li>
-                                    <li><a href="contact.html">Contact</a></li>
+                                    <li><a href="{% url 'contact' %}">Contact</a></li>
 
 
                                     {% if user.is_authenticated and not user.is_superuser %}
@@ -53,6 +53,7 @@
                                             <li><a href="{% url 'myorders' %}">Orders</a></li>
                                             <li><a href="{% url 'wishlist' %}">Wishlist</a></li>
                                             <li><a href="{% url 'wallet' %}">Wallet</a></li>
+                                            <li><a href="{% url 'change_password' %}">Change Password</a></li>
                                             <li><a href="{% url 'logout' %}">Logout</a></li>
                                     
                                         </ul>
@@ -70,7 +71,12 @@
                                         <span class="flaticon-search"></span>
                                     </div>
                                 </li>
-                                <li> <a href="{% url 'login' %}"><span class="flaticon-user"></span></a></li>
+                                {% if not user.is_authenticated %}
+<li>
+    <a href="{% url 'login' %}"><span class="flaticon-user"></span></a>
+</li>
+{% endif %}
+
                                 <li><a href="{% url 'cart' %}"><span class="flaticon-shopping-cart"></span></a> </li>
                             </ul>
                         </div>

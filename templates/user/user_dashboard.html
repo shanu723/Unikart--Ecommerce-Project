@@ -101,7 +101,7 @@
                                 <ul id="navigation">  
                                     <li><a href="{% url 'home' %}">Home</a></li>
                                     <li><a href="{% url 'shop' %}">shop</a></li>
-                                    <li><a href="about.html">about</a></li>
+                                    <li><a href="{% url 'about' %}">about</a></li>
                                     <li class="hot"><a href="#">Latest</a>
                                         <ul class="submenu">
                                             <li><a href="{% static 'shop.html' %}"> Product list</a></li>
@@ -116,6 +116,10 @@
                                             <li><a href="{% url 'myorders' %}">Orders</a></li>
                                             <li><a href="{% url 'wishlist' %}">Wishlist</a></li>
                                             <li><a href="{% url 'wallet' %}">Wallet</a></li>
+                                            {% if user.has_usable_password %}
+                                                <li><a href="{% url 'change_password' %}">Change Password</a></li>
+                                            {% endif %}
+
                                             <li><a href="{% url 'logout' %}">Logout</a></li>
                                     
                                         </ul>
@@ -134,7 +138,7 @@
                                     </div>
                                 </li>
                                 
-                                <li><a href="% url 'cart' %"><span class="flaticon-shopping-cart"></span></a> </li>
+                                <li><a href="{% url 'cart' %}"><span class="flaticon-shopping-cart"></span></a> </li>
                             </ul>
                         </div>
                     </div>

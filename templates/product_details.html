@@ -624,25 +624,21 @@
                     <div class="variation-options">
                         {% for variation in variations %}
                             <button class="variation-btn {% if forloop.first %}active{% endif %}"
-                                    data-price="{{ variation.final_price|floatformat:2 }}"
-                                    data-original="{{ variation.original_price|floatformat:2 }}"
-                                    data-offer-type="{{ variation.offer_type }}"
-                                    data-offer-value="{{ variation.offer_value }}"
-                                    data-size="{{ variation.size }}">
-                                {{ variation.size }} inch
-                            </button>
+                                data-price="{{ variation.final_price|floatformat:2 }}"
+                                data-original="{{ variation.original_price|floatformat:2 }}"
+                                data-stock="{{ variation.stock }}"
+                                data-offer-type="{{ variation.offer_type }}"
+                                data-offer-value="{{ variation.offer_value }}"
+                                data-size="{{ variation.size }}">
+                            {{ variation.size }} inch
+                        </button>
+
                         {% endfor %}
                     </div>
                 </div>
               
+                <div id="stock-status"></div>
 
-                <div>
-                    {% if total_stock|default:0 > 0 %}
-                        <p class="text-success">In Stock ({{ total_stock }} available)</p>
-                    {% else %}
-                        <p class="text-danger">Out of Stock</p>
-                    {% endif %}
-                </div>
 
                 <div class="highlights">
                 <h3>Highlights</h3>
@@ -856,52 +852,67 @@
             }
         });
 
-        // Variation selection functionality
-        document.querySelectorAll('.variation-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.variation-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
+     // Variation selection functionality
+document.querySelectorAll('.variation-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        // Remove active class from all buttons
+        document.querySelectorAll('.variation-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
 
-                const price = parseFloat(this.dataset.price);
-                const originalPrice = parseFloat(this.dataset.original);
-                const size = this.dataset.size;
+        const price = parseFloat(this.dataset.price);
+        const originalPrice = parseFloat(this.dataset.original);
+        const size = this.dataset.size;
+        const stock = parseInt(this.dataset.stock); // <-- get stock from data attribute
 
-                // Update price fields
-                const currentPriceEl = document.getElementById('current-price');
-                const originalPriceEl = document.getElementById('original-price');
-                const offerInfoEl = document.getElementById('offer-info');
-                const offerType = this.dataset.offerType;
-                const offerValue = this.dataset.offerValue;
+        // Update price fields
+        const currentPriceEl = document.getElementById('current-price');
+        const originalPriceEl = document.getElementById('original-price');
+        const offerInfoEl = document.getElementById('offer-info');
+        const offerType = this.dataset.offerType;
+        const offerValue = this.dataset.offerValue;
 
-                currentPriceEl.textContent = '₹' + price.toLocaleString('en-IN');
+        currentPriceEl.textContent = '₹' + price.toLocaleString('en-IN');
 
-                // Only show original price if there is a discount
-                if(!isNaN(originalPrice) && originalPrice > price){
-                    originalPriceEl.innerHTML = '<del>₹' + originalPrice.toLocaleString('en-IN') + '</del>';
-                    let label = '';
-                    if (offerType === 'flat' && !isNaN(parseFloat(offerValue))) {
-                        label = 'Offer applied: Flat ₹' + parseFloat(offerValue).toLocaleString('en-IN');
-                    } else {
-                        const discountPercent = Math.round(((originalPrice - price) / originalPrice) * 100);
-                        label = 'Offer applied: ' + discountPercent + '% OFF';
-                    }
-                    offerInfoEl.textContent = label;
-                } else {
-                    originalPriceEl.textContent = '';
-                    offerInfoEl.textContent = '';
-                }
+        // Only show original price if there is a discount
+        if(!isNaN(originalPrice) && originalPrice > price){
+            originalPriceEl.innerHTML = '<del>₹' + originalPrice.toLocaleString('en-IN') + '</del>';
+            let label = '';
+            if (offerType === 'flat' && !isNaN(parseFloat(offerValue))) {
+                label = 'Offer applied: Flat ₹' + parseFloat(offerValue).toLocaleString('en-IN');
+            } else {
+                const discountPercent = Math.round(((originalPrice - price) / originalPrice) * 100);
+                label = 'Offer applied: ' + discountPercent + '% OFF';
+            }
+            offerInfoEl.textContent = label;
+        } else {
+            originalPriceEl.textContent = '';
+            offerInfoEl.textContent = '';
+        }
 
-                // Update spec
-                const specSizeEl = document.getElementById('spec-size');
-                if (specSizeEl) specSizeEl.textContent = size + ' Inch';
-            });
-        });
+        // Update spec
+        const specSizeEl = document.getElementById('spec-size');
+        if (specSizeEl) specSizeEl.textContent = size + ' Inch';
 
-   function addToCart(productId) {
-    // Find the active size button
+        // ---- NEW: Update stock ----
+        const stockStatusEl = document.getElementById('stock-status');
+        if(stockStatusEl){
+            if(stock > 0){
+                stockStatusEl.innerHTML = `<span class="text-success">In Stock (${stock})</span>`;
+            } else {
+                stockStatusEl.innerHTML = `<span class="text-danger">Out of Stock</span>`;
+            }
+        }
+    });
+});
+
+// Trigger first variation on page load
+const firstBtn = document.querySelector('.variation-btn.active') || document.querySelector('.variation-btn');
+if(firstBtn) firstBtn.click();
+
+
+  function addToCart(productId) {
     let selectedBtn = document.querySelector('.variation-btn.active');
 
-    // If no size selected, pick the first variation button
     if (!selectedBtn) {
         selectedBtn = document.querySelector('.variation-btn');
         if (!selectedBtn) {
@@ -911,17 +922,22 @@
     }
 
     const selectedSize = selectedBtn.getAttribute('data-size');
+    const stock = parseInt(selectedBtn.getAttribute('data-stock')); // get stock
 
-    // Build URL manually → Django @login_required handles login redirect
+    if (stock <= 0) {
+        alert("This variation is out of stock.");
+        return;
+    }
+
+    // Build URL → Django @login_required handles login redirect
     const url = `/add_to_cart/${productId}/${selectedSize}/`;
     window.location.href = url;
 }
 
-      function buyNow(productId) {
-    // Find the active size button (same logic as addToCart)
+
+   function buyNow(productId) {
     let selectedBtn = document.querySelector('.variation-btn.active');
 
-    // If no size selected, pick the first available one
     if (!selectedBtn) {
         selectedBtn = document.querySelector('.variation-btn');
         if (!selectedBtn) {
@@ -931,10 +947,16 @@
     }
 
     const selectedSize = selectedBtn.getAttribute('data-size');
+    const stock = parseInt(selectedBtn.getAttribute('data-stock')); // get stock
 
-    // Redirect to the buy_now page
+    if (stock <= 0) {
+        alert("This variation is out of stock.");
+        return;
+    }
+
     window.location.href = `/buy_now/${productId}/${selectedSize}/`;
 }
+
 
 
 

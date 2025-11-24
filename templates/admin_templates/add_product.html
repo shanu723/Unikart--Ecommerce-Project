@@ -37,19 +37,25 @@
                 </div>
 
                 <div class="form-check">
-                    <input type="checkbox" name="status" class="form-check-input" id="statusCheck">
+                    <input type="checkbox" name="status" class="form-check-input" id="statusCheck" checked>
                     <label for="statusCheck" class="form-check-label">Active</label>
                 </div>
             </div>
         </div>
 
         <!-- Product Images -->
-        <div class="form-group">
-    <label>Upload Images</label>
-    <input type="file" name="product_images" id="imageInput" class="form-control" multiple required>
-</div>
-<div id="imagePreview" class="mt-3 d-flex flex-wrap gap-2"></div>
+        <div class="card mb-4">
+            <div class="card-header">Product Images</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>Upload Images</label>
+                    <input type="file" name="product_images[]" id="imageInput" class="form-control" multiple>
 
+                    <small class="text-muted">You can select multiple images. Click the X on preview to remove.</small>
+                </div>
+                <div id="imagePreview" class="mt-3 d-flex flex-wrap gap-2"></div>
+            </div>
+        </div>
 
         <!-- Variations -->
         <div class="card mb-4">
@@ -58,38 +64,136 @@
                 <button type="button" class="btn btn-sm btn-primary" onclick="addVariation()">+ Add</button>
             </div>
             <div class="card-body" id="variation-container">
-                <!-- JS will append fields here -->
+                <!-- Initial Variation Row -->
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <label>Size</label>
+                        <select name="size[]" class="form-control">
+                            <option value="32">32 inch</option>
+                            <option value="43">43 inch</option>
+                            <option value="50">50 inch</option>
+                            <option value="55">55 inch</option>
+                            <option value="60">60 inch</option>
+                            <option value="65">65 inch</option>
+                            <option value="75">75 inch</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label>Original Price</label>
+                        <input type="number" step="0.01" name="original_price[]" class="form-control" required>
+                    </div>
+                    
+                    <div class="col-md-2">
+                        <label>Stock</label>
+                        <input type="number" name="stock[]" class="form-control" required>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-center">
+                        <div class="form-check mt-3">
+                            <input type="checkbox" name="variation_status[]" class="form-check-input" checked>
+                            <label class="form-check-label">Active</label>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
        <!-- Highlights / Specifications -->
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between">
-        Highlights / Specifications
-        <button type="button" class="btn btn-sm btn-primary" onclick="addHighlight()">+ Add</button>
-    </div>
-    <div class="card-body" id="highlight-container">
-        <!-- Example of a pre-filled highlight (can be looped in edit form) -->
-        <div class="highlight-item mb-2 d-flex gap-2">
-            <select name="highlight_keys[]" class="form-control">
-                <option value="">Select Key</option>
-                <option value="Supported Apps">Supported Apps</option>
-                <option value="RAM">RAM</option>
-                <option value="Power Supply">Power Supply</option>
-                <option value="Display Technology">Display Technology</option>
-                <option value="Processor">Processor</option>
-                <option value="Resolution">Resolution</option>
-                <option value="Sound Output">Sound Output</option>
-                <option value="Operating System">Operating System</option>
-                <option value="Price">Price</option>
-            </select>
-            <input type="text" name="highlight_values[]" class="form-control" placeholder="Value">
+        <div class="card mb-4">
+            <div class="card-header">
+                Highlights / Specifications
+            </div>
+            <div class="card-body" id="highlight-container">
+                <!-- Static Fields as requested -->
+                <!-- Field 1 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Supported Apps" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Supported Apps">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. Netflix, YouTube">
+                    </div>
+                </div>
+
+                <!-- Field 2 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="RAM" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="RAM">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. 2GB">
+                    </div>
+                </div>
+
+                <!-- Field 3 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Storage" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Storage">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. 16GB">
+                    </div>
+                </div>
+
+                <!-- Field 4 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Display Technology" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Display Technology">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. LED">
+                    </div>
+                </div>
+
+                <!-- Field 5 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Processor" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Processor">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. Quad Core">
+                    </div>
+                </div>
+
+                <!-- Field 6 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Resolution" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Resolution">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. 3840 x 2160">
+                    </div>
+                </div>
+
+                <!-- Field 7 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Sound Output" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Sound Output">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. 20W">
+                    </div>
+                </div>
+
+                <!-- Field 8 -->
+                <div class="highlight-item mb-3 row">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" value="Operating System" readonly style="background-color: #f8f9fa;">
+                        <input type="hidden" name="highlight_keys[]" value="Operating System">
+                    </div>
+                    <div class="col-md-8">
+                        <input type="text" name="highlight_values[]" class="form-control" placeholder="e.g. Android TV">
+                    </div>
+                </div>
+                
+            </div>
         </div>
-    </div>
-</div>
-
-
-      
 
         <button type="submit" class="btn btn-success">Save Product</button>
     </form>
@@ -106,7 +210,10 @@
                         <option value="32">32 inch</option>
                         <option value="43">43 inch</option>
                         <option value="50">50 inch</option>
+                        <option value="55">55 inch</option>
                         <option value="60">60 inch</option>
+                        <option value="65">65 inch</option>
+                        <option value="75">75 inch</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -120,59 +227,78 @@
                 </div>
                 <div class="col-md-2 d-flex align-items-center">
                     <div class="form-check mt-3">
-                        <input type="checkbox" name="variation_status[]" class="form-check-input">
+                        <input type="checkbox" name="variation_status[]" class="form-check-input" checked>
                         <label class="form-check-label">Active</label>
                     </div>
+                </div>
+                <div class="col-md-2 d-flex align-items-center">
+                     <button type="button" class="btn btn-danger btn-sm mt-3" onclick="this.closest('.row').remove()">Remove</button>
                 </div>
             </div>
         `);
     }
 
-    function addHighlight() {
-    document.getElementById('highlight-container').insertAdjacentHTML('beforeend', `
-        <div class="highlight-item mb-2 d-flex gap-2">
-            <select name="highlight_keys[]" class="form-control">
-                <option value="">Select Key</option>
-                <option value="Supported Apps">Supported Apps</option>
-                <option value="RAM">RAM</option>
-                <option value="Power Supply">Storage</option>
-                <option value="Display Technology">Display Technology</option>
-                <option value="Processor">Processor</option>
-                <option value="Resolution">Resolution</option>
-                <option value="Sound Output">Sound Output</option>
-                <option value="Operating System">Operating System</option>
-                <option value="Price">Price</option>
-            </select>
-            <input type="text" name="highlight_values[]" class="form-control" placeholder="Value">
-        </div>
-    `);
-}
+    // --- Better Image Upload Logic ---
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    // We use a DataTransfer object to hold the files because we can't directly manipulate FileList
+    const dt = new DataTransfer();
 
-
-   
-    document.getElementById('imageInput').addEventListener('change', function(event) {
-    const previewContainer = document.getElementById('imagePreview');
-    previewContainer.innerHTML = '';  // Clear previous previews
-
-    const files = event.target.files;
-    if (files.length === 0) return;
-
-    Array.from(files).forEach(file => {
-        if (!file.type.startsWith('image/')) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.className = 'rounded border';
-            img.style.width = '100px';
-            img.style.height = '100px';
-            img.style.objectFit = 'cover';
-            img.style.marginRight = '10px';
-            previewContainer.appendChild(img);
-        };
-        reader.readAsDataURL(file);
+    imageInput.addEventListener('change', function(e) {
+        for(let i = 0; i < this.files.length; i++){
+            let file = this.files[i];
+            // Add file to DataTransfer
+            dt.items.add(file);
+        }
+        // Update the input files to match our DataTransfer list (accumulating files)
+        this.files = dt.files;
+        
+        // Re-render previews
+        updateImagePreviews();
     });
-});
+
+    function updateImagePreviews() {
+        imagePreview.innerHTML = '';
+        
+        Array.from(dt.files).forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'position-relative d-inline-block';
+                
+                // Image
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'rounded border';
+                img.style.width = '100px';
+                img.style.height = '100px';
+                img.style.objectFit = 'cover';
+                
+                // Close Button
+                const btn = document.createElement('button');
+                btn.innerHTML = '×';
+                btn.className = 'btn btn-danger btn-sm position-absolute';
+                btn.style.top = '-5px';
+                btn.style.right = '-5px';
+                btn.style.borderRadius = '50%';
+                btn.style.padding = '0px 6px';
+                btn.style.lineHeight = '18px';
+                
+                btn.onclick = function() {
+                    // Remove item from DataTransfer at this index
+                    dt.items.remove(index);
+                    // Update input files
+                    imageInput.files = dt.files;
+                    // Re-render
+                    updateImagePreviews();
+                };
+
+                div.appendChild(img);
+                div.appendChild(btn);
+                imagePreview.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 </script>
 {% endblock %}

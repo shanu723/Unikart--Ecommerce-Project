@@ -24,7 +24,7 @@
                             {% for item in items %}
                            <tr data-item-id="{{ item.id }}">
     <!-- Checkbox -->
-   <td> <input type="checkbox" name="selected_items" value="{{ item.id }}"> </td>
+   <td> <input type="checkbox" name="selected_items[]" value="{{ item.id }}"> </td>
 
     <!-- Product -->
     <td class="d-flex align-items-center">
@@ -205,7 +205,7 @@
 
 })();
 function submitSelected() {
-    const checkboxes = document.querySelectorAll('input[name="selected_items"]:checked');
+    const checkboxes = document.querySelectorAll('input[name="selected_items[]"]:checked');
 
     if (checkboxes.length === 0) {
         alert("Please select at least one item to checkout.");
@@ -229,7 +229,7 @@ function submitSelected() {
     checkboxes.forEach(cb => {
         const input = document.createElement('input');
         input.type = 'hidden';
-        input.name = 'selected_items';
+        input.name = 'selected_items[]';
         input.value = cb.value;
         form.appendChild(input);
     });

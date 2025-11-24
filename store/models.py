@@ -31,7 +31,8 @@ class UserProfile(models.Model):
     user=models.OneToOneField(User,on_delete=models.CASCADE,related_name='profile') 
     is_blocked=models.BooleanField(default=False)
     phone = models.CharField(max_length=15, blank=True, null=True)
-    profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
+    profile_photo = models.ImageField(upload_to='profile_photos/',
+    default='profile_photos/default.jpg', blank=True, null=True)
 
     def __str__(self): 
         return self.user.username
@@ -161,12 +162,10 @@ class Order(models.Model):
     address=models.ForeignKey(Address,on_delete=models.SET_NULL,null=True,blank=True)
     created_at=models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="Pending")
-
-
     subtotal = models.DecimalField(max_digits=10, decimal_places = 2, default=0)
     discount = models.DecimalField(max_digits=10, decimal_places =2,default=0)
     shipping = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    total = models.DecimalField(max_digits=10,decimal_places=2,default=2)
+    total = models.DecimalField(max_digits=10,decimal_places=2,default=0)
     payment_method = models.CharField(max_length=50,blank=True,null=True)
     def __str__(self):
         return f"Order{self.id} by {self.user.username}"

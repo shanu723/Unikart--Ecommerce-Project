@@ -19,8 +19,18 @@
             <div class="mb-3">
               <input type="text" name="otp" class="form-control" placeholder="Enter OTP" required>
             </div>
+            
             <button type="submit" class="btn btn-success w-100">Verify OTP</button>
           </form>
+
+          <!-- Resend OTP link -->
+          <div class="text-center mt-3">
+            <a href="{% url 'resend_otp' username %}" 
+               style="color: #198754; text-decoration: underline; font-weight: 500;">
+              Resend OTP
+            </a>
+          </div>
+
         </div>
       </div>
     </div>

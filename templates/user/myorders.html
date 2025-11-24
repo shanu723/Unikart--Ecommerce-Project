@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% load static tz %}
-
 {% block content %}
 <div class="container py-5">
     <h2 class="text-center mb-4 fw-bold">My Orders</h2>
@@ -46,13 +45,13 @@
                             </ul>
                         </td>
                         <td class="fw-bold text-success">₹{{ order.total|floatformat:2 }}</td>
-                        <<td>
+                        <td>
     <div class="d-flex justify-content-center gap-2">
         <a href="{% url 'order_detail' order.id %}" class="btn btn-outline-info btn-sm">
             View Details
         </a>
         
-        {% if order.status != "Cancelled" %}
+        {% if order.status == "Delivered" %}
             <a href="{% url 'return_order' order.id %}" class="btn btn-outline-danger btn-sm">Return</a>
         {% else %}
             <button class="btn btn-secondary btn-sm" disabled>Return</button>
@@ -90,7 +89,7 @@
         </div>
     {% else %}
         <div class="text-center py-5">
-            <img src="{% static 'assets/images/empty_orders.svg' %}" alt="No Orders" class="img-fluid mb-3" style="max-width: 250px;">
+            
             <h5 class="text-muted">You haven’t placed any orders yet.</h5>
             <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Shop Now</a>
         </div>

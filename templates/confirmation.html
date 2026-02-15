@@ -318,6 +318,14 @@
   <!-- Search model end -->
 
   <!-- JS here -->
+   <script>
+history.pushState(null, null, location.href);
+window.onpopstate = function () {
+    window.location.href = "/shop/";
+};
+</script>
+
+
   
   <script src="./assets/js/vendor/modernizr-3.5.0.min.js"></script>
   <!-- Jquery, Popper, Bootstrap -->

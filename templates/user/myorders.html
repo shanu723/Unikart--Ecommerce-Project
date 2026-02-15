@@ -1,98 +1,185 @@
 {% extends 'base.html' %}
 {% load static tz %}
 {% block content %}
+
+<style>
+/* Tabs */
+.order-tabs .nav-link {
+  color: #555;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+.order-tabs .nav-link.active {
+  color: #000;
+  border-bottom: 2px solid #000;
+  background: none;
+}
+
+/* Table */
+.orders-table thead {
+  background: #f8f9fa;
+}
+
+.orders-table th {
+  font-weight: 600;
+  color: #444;
+  border-bottom: 1px solid #ddd;
+}
+
+.orders-table td {
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+/* Status badges */
+.badge-status {
+  padding: 6px 10px;
+  font-weight: 500;
+  border-radius: 12px;
+}
+
+.badge-delivered { background: #e6f4ea; color: #137333; }
+.badge-cancelled { background: #fdecea; color: #a50e0e; }
+.badge-returned { background: #e8f0fe; color: #174ea6; }
+.badge-processing { background: #fef7e0; color: #8a6d1d; }
+
+/* Search */
+#orderSearch {
+  border-radius: 20px;
+  padding: 10px 15px;
+}
+</style>
+
 <div class="container py-5">
-    <h2 class="text-center mb-4 fw-bold">My Orders</h2>
 
-    {% if page_obj %}
-        <div class="table-responsive shadow rounded">
-            <table class="table align-middle mb-0 table-hover" style="min-width: 100%;">
-                <thead class="table-dark text-center">
-                    <tr>
-                        <th scope="col" style="width:10%;">Order ID</th>
-                        <th scope="col" style="width:20%;">Date</th>
-                        <th scope="col" style="width:15%;">Status</th>
-                        <th scope="col" style="width:35%;">Items</th>
-                        <th scope="col" style="width:10%;">Total (₹)</th>
-                        <th scope="col" style="width:10%;">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="text-center">
-                    {% for order in page_obj %}
-                    <tr>
-                        <td class="fw-semibold">#{{ order.id }}</td>
-                        <td>
-                            {% timezone "Asia/Kolkata" %}
-                                {{ order.created_at|date:"d M Y, h:i A" }}
-                            {% endtimezone %}
-                        </td>
-                        <td>
-                            {% if order.status == "Delivered" %}
-                                <span class="badge bg-success px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
-                            {% elif order.status == "Cancelled" %}
-                                <span class="badge bg-danger px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
-                            {% elif order.status == "Processing" %}
-                                <span class="badge bg-warning text-dark px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
-                            {% else %}
-                                <span class="badge bg-secondary px-3 py-2 fs-6 fw-bold">{{ order.status }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <ul class="list-unstyled mb-0 text-start">
-                                {% for item in order.items.all %}
-                                    <li>{{ item.product.name }} × {{ item.quantity }} — ₹{{ item.price }}</li>
-                                {% endfor %}
-                            </ul>
-                        </td>
-                        <td class="fw-bold text-success">₹{{ order.total|floatformat:2 }}</td>
-                        <td>
-    <div class="d-flex justify-content-center gap-2">
-        <a href="{% url 'order_detail' order.id %}" class="btn btn-outline-info btn-sm">
-            View Details
-        </a>
-        
-        {% if order.status == "Delivered" %}
-            <a href="{% url 'return_order' order.id %}" class="btn btn-outline-danger btn-sm">Return</a>
-        {% else %}
-            <button class="btn btn-secondary btn-sm" disabled>Return</button>
-        {% endif %}
+  <h3 class="text-center mb-4 fw-semibold">My Orders</h3>
+
+  <!-- Search -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-6">
+      <input type="text"
+             id="orderSearch"
+             class="form-control"
+             placeholder="Search by order ID or product name">
     </div>
-</td>
+  </div>
 
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+  <!-- Tabs -->
+  <ul class="nav justify-content-center mb-4 order-tabs" id="orderTabs">
+    <li class="nav-item"><button class="nav-link active" data-status="All">All</button></li>
+    <li class="nav-item"><button class="nav-link" data-status="Delivered">Delivered</button></li>
+    <li class="nav-item"><button class="nav-link" data-status="Cancelled">Cancelled</button></li>
+    <li class="nav-item"><button class="nav-link" data-status="Returned">Returned</button></li>
+  </ul>
 
-        <!-- Pagination -->
-        <div class="d-flex justify-content-center mt-4">
-            <nav aria-label="Page navigation">
-                <ul class="pagination">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
-                        </li>
-                    {% endif %}
-                    {% for num in page_obj.paginator.page_range %}
-                        <li class="page-item {% if num == page_obj.number %}active{% endif %}">
-                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                        </li>
-                    {% endfor %}
-                    {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-    {% else %}
-        <div class="text-center py-5">
-            
-            <h5 class="text-muted">You haven’t placed any orders yet.</h5>
-            <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Shop Now</a>
-        </div>
-    {% endif %}
+  {% if page_obj %}
+  <div class="table-responsive">
+    <table class="table orders-table align-middle">
+      <thead>
+        <tr class="text-center">
+          <th>Order</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th class="text-start">Items</th>
+          <th>Total</th>
+          <th></th>
+        </tr>
+      </thead>
+
+      <tbody id="ordersTable">
+        {% for order in page_obj %}
+        <tr class="order-row"
+            data-status="{{ order.status }}"
+            data-search="#{{ order.id }} {% for item in order.items.all %} {{ item.product.name }} {% endfor %}">
+
+          <td class="fw-medium text-center">#{{ order.id }}</td>
+
+          <td class="text-center">
+            {% timezone "Asia/Kolkata" %}
+              {{ order.created_at|date:"d M Y" }}
+            {% endtimezone %}
+          </td>
+
+          <td class="text-center">
+            {% if order.status == "Delivered" %}
+              <span class="badge-status badge-delivered">Delivered</span>
+            {% elif order.status == "Cancelled" %}
+              <span class="badge-status badge-cancelled">Cancelled</span>
+            {% elif order.status == "Returned" %}
+              <span class="badge-status badge-returned">Returned</span>
+            {% else %}
+              <span class="badge-status badge-processing">Processing</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% for item in order.items.all %}
+              <div>{{ item.product.name }} × {{ item.quantity }}</div>
+            {% endfor %}
+          </td>
+
+          <td class="fw-semibold text-center">
+            ₹{{ order.total|floatformat:2 }}
+          </td>
+
+          <td class="text-center">
+            <a href="{% url 'order_detail' order.id %}"
+   class="text-decoration-none text-primary fw-semibold small">
+   View Details →
+</a>
+
+
+            {% if order.status == "Delivered" %}
+            <a href="{% url 'return_order' order.id %}"
+               class="btn btn-sm btn-outline-danger">
+              Return
+            </a>
+            {% endif %}
+          </td>
+
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% else %}
+  <div class="text-center py-5">
+    <p class="text-muted">You haven’t placed any orders yet.</p>
+    <a href="{% url 'shop' %}" class="btn btn-dark btn-sm">Shop Now</a>
+  </div>
+  {% endif %}
+
 </div>
+
+<script>
+const tabs = document.querySelectorAll("#orderTabs .nav-link");
+const rows = document.querySelectorAll(".order-row");
+const searchInput = document.getElementById("orderSearch");
+
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    tabs.forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const status = tab.dataset.status;
+
+    rows.forEach(row => {
+      row.style.display =
+        status === "All" || row.dataset.status === status ? "" : "none";
+    });
+  });
+});
+
+searchInput.addEventListener("keyup", function () {
+  const value = this.value.toLowerCase();
+  rows.forEach(row => {
+    row.style.display = row.dataset.search.toLowerCase().includes(value) ? "" : "none";
+  });
+});
+</script>
+
 {% endblock %}

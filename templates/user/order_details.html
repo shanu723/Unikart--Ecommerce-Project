@@ -1,71 +1,127 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static tz %}
 {% block content %}
 
 <div class="container py-5">
-    <div class="card shadow rounded-4 p-4">
-        <h3 class="text-center mb-4">Order #{{ order.id }} Details</h3>
+  <div class="card shadow-sm rounded-4 p-4">
 
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <h5>Order Information</h5>
-                <p><strong>Date:</strong> {{ order.created_at|date:"d M Y, h:i A" }}</p>
-                <p><strong>Status:</strong> {{ order.status }}</p>
-                <p><strong>Payment Method:</strong> {{ order.payment_method|default:"N/A" }}</p>
-            </div>
-            <div class="col-md-6">
-                <h5>Shipping Address</h5>
-                {% if order.address %}
-    <p>{{ order.address.street }}, {{ order.address.city }}, {{ order.address.state }} - {{ order.address.pincode }}</p>
-{% else %}
-    <p>No address available</p>
-{% endif %}
+    <h3 class="text-center mb-4">Order #{{ order.id }}</h3>
 
-            </div>
-        </div>
+    <!-- ORDER TRACKING (HORIZONTAL) -->
+    <div class="mb-5 position-relative">
+      <!-- Horizontal line -->
+      <div class="position-absolute top-50 start-0 end-0 translate-middle-y"
+           style="height:2px;background:#ddd; z-index:0;"></div>
 
-        <hr>
-
-        <h5>Ordered Items</h5>
-        <table class="table table-bordered mt-3">
-            <thead class="table-light">
-                <tr>
-                    <th>Product</th>
-                    <th>Quantity</th>
-                    <th>Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in order.items.all %}
-                <tr>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>₹{{ item.price }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <div class="text-end mt-4">
-            <p><strong>Total:</strong> ₹{{ order.total|floatformat:2 }}</p>
-        </div>
-
-        <div class="text-center mt-4 d-flex justify-content-center gap-3">
-    <a href="{% url 'myorders' %}" class="btn btn-secondary rounded-pill px-4">Back to Orders</a>
-
-    {% if order.status != 'Cancelled' %}
-    <form action="{% url 'cancel_order' order.id %}" method="post">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger rounded-pill px-4"
-            onclick="return confirm('Are you sure you want to cancel this order?');">
-            Cancel Order
-        </button>
-    </form>
-    {% endif %}
-</div>
-
-    
+      <div class="d-flex justify-content-between position-relative">
+        {% comment %} Pass tracking_steps from view: ["Pending","Processing","Shipped","Delivered"] {% endcomment %}
+        {% for step in tracking_steps %}
+          <div class="text-center flex-fill position-relative" style="z-index:1;">
+            <div class="mx-auto mb-2 rounded-circle
+              {% if forloop.counter0 <= current_step_index %}
+                bg-dark
+              {% else %}
+                bg-secondary
+              {% endif %}"
+              style="width:14px;height:14px;"></div>
+            <small class="text-muted">{{ step }}</small>
+          </div>
+        {% endfor %}
+      </div>
     </div>
+
+    <!-- ORDER INFO -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <h6 class="fw-bold">Order Information</h6>
+        <p class="mb-1"><strong>Date:</strong> 
+          {% timezone "Asia/Kolkata" %}{{ order.created_at|date:"d M Y, h:i A" }}{% endtimezone %}
+        </p>
+        <p class="mb-1"><strong>Status:</strong> {{ order.status }}</p>
+        <p class="mb-1"><strong>Payment:</strong> {{ order.payment_method|default:"N/A" }}</p>
+      </div>
+
+      <div class="col-md-6">
+        <h6 class="fw-bold">Shipping Address</h6>
+        {% if order.address %}
+          <p class="mb-0">{{ order.address.street }}, {{ order.address.city }}, {{ order.address.state }} - {{ order.address.pincode }}</p>
+        {% else %}
+          <p class="text-muted">No address available</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- ORDER ITEMS -->
+    <h6 class="fw-bold mb-3">Ordered Items</h6>
+    <table class="table align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Product</th>
+          <th>Qty</th>
+          <th class="text-end">Price</th>
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.items.all %}
+        <tr>
+          <td>{{ item.product.name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td class="text-end">₹{{ item.price|floatformat:2 }}</td>
+          <td class="text-end">₹{{ item.quantity|floatformat:0|floatformat:2|add:item.price }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- PRICE SUMMARY -->
+    <div class="row justify-content-end mt-4">
+      <div class="col-md-4">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Subtotal</span>
+            <span>₹{{ order.subtotal|floatformat:2 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Discount</span>
+            <span class="text-success">− ₹{{ order.discount|floatformat:2 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>Shipping</span>
+            <span>₹{{ order.shipping|floatformat:2 }}</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between fw-bold">
+            <span>Total</span>
+            <span>₹{{ order.total|floatformat:2 }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="text-center mt-4 d-flex justify-content-center gap-2">
+      <a href="{% url 'myorders' %}" class="btn btn-outline-secondary btn-sm">
+        ← Back to Orders
+      </a>
+
+      {% if order.status == "Delivered" %}
+        <a href="{% url 'return_order' order.id %}" class="btn btn-outline-danger btn-sm">
+          Return Order
+        </a>
+      {% elif order.status != "Cancelled" %}
+        <form action="{% url 'cancel_order' order.id %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger btn-sm"
+                  onclick="return confirm('Are you sure you want to cancel this order?');">
+            Cancel Order
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+  </div>
 </div>
 
 {% endblock %}

@@ -41,7 +41,7 @@ urlpatterns = [
     path('place_order/',views.place_orders,name='place_order'),
     path('cancel_order/<int:order_id>/',views.cancel_order,name='cancel_order'),
     path('download-invoice/<int:order_id>/', views.download_invoice_pdf, name='download_invoice_pdf'),
-
+    path("razorpay/webhook/", views.razorpay_webhook),
     path('payment_success/', views.payment_success, name='payment_success'),
     path('wishlist/',views.wishlist,name='wishlist'),
     path('remove_wishlist/<int:id>/',views.remove_wishlist,name='remove_wishlist'),
@@ -64,6 +64,8 @@ urlpatterns = [
     path('download-sales-pdf/', views.download_sales_pdf, name='download_sales_pdf'),
     path('profile/',views.profile_view,name='profile'),
     path('update_profile/',views.update_profile,name='update_profile'),
+    path('verify_update_otp/', views.verify_update_otp, name='verify_update_otp'),
+    path('resend_update_otp/', views.resend_update_otp, name='resend_update_otp'),
     path('add_address',views.add_address,name='add_address'),
     path('edit_address/<int:address_id>/',views.edit_address,name='edit_address'),
     path('remove_address/<int:address_id>/',views.remove_address,name='remove_address'),

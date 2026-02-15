@@ -90,7 +90,9 @@
                     </div>
                     <div class="col-md-2 d-flex align-items-center">
                         <div class="form-check mt-3">
-                            <input type="checkbox" name="variation_status[]" class="form-check-input" {% if variation.status %}checked{% endif %}>
+                            <input type="checkbox" name="variation_status[]" class="form-check-input" 
+                            {% if variation.status %}checked
+                            {% endif %}>
                             <label class="form-check-label">Active</label>
                         </div>
                     </div>

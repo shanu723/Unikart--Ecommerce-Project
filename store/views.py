@@ -11,6 +11,7 @@ from datetime import timedelta,datetime
 import openpyxl
 from openpyxl.utils import get_column_letter
 from .models import Order
+from django.urls import reverse
 from django.shortcuts import render,redirect
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib.auth import authenticate, login,logout
@@ -260,6 +261,7 @@ def add_category(request):
 def edit_category(request,category_id):
     category=get_object_or_404(Category,id=category_id)
     if request.method=="POST":
+
         name=request.POST.get('name')
         status=request.POST.get('status')=='on'
 
@@ -476,11 +478,16 @@ def shop(request):
     page_number = request.GET.get('page')
     products = paginator.get_page(page_number)          
 
+    wishlist_product_ids = []
+    if is_authenticated:
+        wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True))
+
     context={
         'products':products,
         'is_authenticated':is_authenticated,
         'current_sort':sort,
         'categories': categories,
+        'wishlist_product_ids': wishlist_product_ids,
     }
     return render(request,'shop.html',context)
 @login_required    
@@ -814,53 +821,122 @@ def buy_now(request, product_id, size):
         cart_item.quantity += 1
         cart_item.save()
 
-    return redirect('checkout')
+    url = reverse('checkout') + f'?buy_now_item={cart_item.id}'
+    return redirect(url)
 
 @login_required
 def profile_view(request):
     user = request.user
     addresses = Address.objects.filter(user=user)
 
+    is_google_user = user.social_auth.filter(provider='google-oauth2').exists()
+
     return render(request, "user/profile.html", {
         "user": user,
         "addresses": addresses,
+        "is_google_user":is_google_user,
         
         })
 
 @login_required
-def update_profile(request): 
-    if request.method=='POST': 
-        user=request.user 
-        profile = user.profile 
+def update_profile(request):
+    user = request.user
+    profile = user.profile
+
+    is_google_user = user.social_auth.filter(provider='google-oauth2').exists()
+
+    if request.method == 'POST':
+        new_email = request.POST.get('email')
+        phone = request.POST.get('phone')
+
         
-        is_google_user = user.social_auth.filter(provider = 'google-oauth2').exists()
+        if is_google_user and new_email != user.email:
+            messages.error(request, "Google users cannot change email")
+            return redirect('profile')
 
-        first_name = request.POST.get('first_name',user.first_name)
-        last_name = request.POST.get('last_name',user.last_name)
-        phone = request.POST.get('phone',profile.phone)
-        profile_photo = request.FILES.get('profile_photo')
-
-        email_input = request.POST.get('email',user.email)
-
-        if is_google_user :
         
-            email=user.email
-        else:
-            email = email_input    
-        user.first_name = first_name
-        user.last_name = last_name
-        user.email = email
-        user.save()
+        if new_email != user.email:
+            otp = str(random.randint(100000, 999999))
+
+            request.session['update_email'] = new_email
+            request.session['update_otp'] = otp
+            request.session['update_otp_time'] = timezone.now().isoformat()
+
+            send_mail(
+                subject="Email verification",
+                message=f"Your OTP is {otp}",
+                from_email="no-reply@gmail.com",
+                recipient_list=[new_email],
+            )
+
+            messages.success(request, "OTP sent to new email")
+            return redirect('verify_update_otp')
+
+        print("NEW:", new_email)
+        print("OLD:", user.email)
 
         profile.phone = phone
-        if profile_photo:
-            profile.profile_photo =profile_photo
         profile.save()
 
-        messages.success(request,'Profile updated successfully!')
+        messages.success(request, "Profile updated")
+        return redirect('profile')    
+
+@login_required
+def verify_update_otp(request):
+    otp = request.session.get('update_otp')
+    otp_time = request.session.get('update_otp_time')
+    new_email = request.session.get('update_email')
+
+    if not otp or not new_email:
+        messages.error(request, "Session expired")
         return redirect('profile')
 
-    return render(request,'user/profile.html')        
+    if request.method == 'POST':
+        entered_otp = request.POST.get('otp')
+
+        otp_time = timezone.datetime.fromisoformat(otp_time)
+
+        if timezone.now() - otp_time > timedelta(minutes=2):
+            messages.error(request, "OTP expired")
+            return redirect('profile')
+
+        if entered_otp == otp:
+            request.user.email = new_email
+            request.user.save()
+
+            # clear session
+            for k in ['update_otp', 'update_otp_time', 'update_email']:
+                request.session.pop(k, None)
+
+            messages.success(request, "Email updated successfully")
+            return redirect('profile')
+
+        else:
+            messages.error(request, "Invalid OTP")
+
+    return render(request, 'verify_update_otp.html')
+
+@login_required
+def resend_update_otp(request):
+    new_email = request.session.get('update_email')
+    
+    if not new_email:
+        messages.error(request, "Session expired. Please try updating profile again.")
+        return redirect('profile')
+
+    otp = str(random.randint(100000, 999999))
+    request.session['update_otp'] = otp
+    request.session['update_otp_time'] = timezone.now().isoformat()
+
+    send_mail(
+        subject="Email Verification - Resend OTP",
+        message=f"Your new OTP is {otp}",
+        from_email="no-reply@gmail.com",
+        recipient_list=[new_email],
+    )
+
+    messages.success(request, "A new OTP has been sent to your email")
+    return redirect('verify_update_otp')        
 
 
 @login_required
@@ -954,9 +1030,92 @@ def set_default_address(request,address_id):
     address.save()
     return redirect('profile')   
 
+def send_email_otp(request):
+    email = request.POST.get("email")
+    user = request.user
+
+    if not email:
+        return JsonResponse({"success": False, "message": "Email required"})
+
+    otp = str(random.randint(100000, 999999))
+
+    # delete old OTPs
+    EmailOTP.objects.filter(user=user, email=email).delete()
+
+    EmailOTP.objects.create(
+        user=user,
+        email=email,
+        otp=otp
+    )
+
+    request.session["pending_email"] = email
+
+    send_mail(
+        "Email Verification OTP",
+        f"Your OTP is {otp}. Valid for 5 minutes.",
+        "noreply@yourapp.com",
+        [email]
+    )
+
+    return JsonResponse({"success": True, "message": "OTP sent successfully"})
+
+def verify_email_otp(request):
+    otp = request.POST.get("otp")
+    email = request.session.get("pending_email")
+
+    if not email:
+        return JsonResponse({"success": False, "message": "Session expired"})
+
+    try:
+        record = EmailOTP.objects.get(
+            user=request.user,
+            email=email,
+            otp=otp
+        )
+
+        if record.is_expired():
+            record.delete()
+            return JsonResponse({"success": False, "message": "OTP expired"})
+
+        request.user.email = email
+        request.user.save()
+
+        record.delete()
+        del request.session["pending_email"]
+
+        return JsonResponse({"success": True, "message": "Email verified"})
+
+    except EmailOTP.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Invalid OTP"})
 
 
+def resend_email_otp(request):
+    email = request.session.get("pending_email")
 
+    if not email:
+        return JsonResponse({"success": False, "message": "No pending email"})
+
+    otp = str(random.randint(100000, 999999))
+
+    EmailOTP.objects.filter(
+        user=request.user,
+        email=email
+    ).delete()
+
+    EmailOTP.objects.create(
+        user=request.user,
+        email=email,
+        otp=otp
+    )
+
+    send_mail(
+        "Resend Email OTP",
+        f"Your new OTP is {otp}.",
+        "noreply@yourapp.com",
+        [email]
+    )
+
+    return JsonResponse({"success": True, "message": "OTP resent"})
    
 
 def wallet_view(request):
@@ -1008,9 +1167,18 @@ def myorders_view(request):
     return render(request,'user/myorders.html',{'user_orders':user_orders,'page_obj':page_obj})
 
 @login_required
-def order_detail(request,order_id):
-    order= get_object_or_404(Order,id=order_id,user = request.user)
-    return render(request,'user/order_details.html',{'order':order})
+def order_detail(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    tracking_steps = ["Pending", "Processing", "Shipped", "Delivered"]
+    try:
+        current_step_index = tracking_steps.index(order.status)
+    except ValueError:
+        current_step_index = 0
+    return render(request, 'user/order_details.html', {
+        'order': order,
+        'tracking_steps': tracking_steps,
+        'current_step_index': current_step_index
+    })
 
 
 
@@ -1029,6 +1197,7 @@ def return_order(request,order_id):
 
 
 @login_required(login_url='login')
+@never_cache
 def order_confirmation(request):
     order_id = request.session.get('order_id')
     if not order_id:
@@ -1041,7 +1210,8 @@ def order_confirmation(request):
     except Order.DoesNotExist:
         messages.error(request,"Order not found")
         return redirect('cart')
-
+    
+    del request.session['order_id']
     context = {
         'order':order,
         'order_items':order_items,
@@ -1097,27 +1267,23 @@ def download_invoice_pdf(request, order_id):
     pass
 @login_required
 def add_to_wishlist(request, product_id):
-    product = get_object_or_404(Product,id=product_id)
+    product = get_object_or_404(Product, id=product_id)
+    
+    # Check if request is AJAX
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
-    
-    
-    if Wishlist.objects.filter(user=request.user,product = product).exists():
-        messages.info(request,"Product already in whichlist")
-    else:
-        Wishlist.objects.create(
-            user=request.user,
-            product = product,
-            
-        ) 
-        messages.success(request,"Product added successfully")
-    return redirect('wishlist')       
-
-    
     if Wishlist.objects.filter(user=request.user, product=product).exists():
-        messages.info(request, "Product already in wishlist.")
+        # Remove from wishlist
+        Wishlist.objects.filter(user=request.user, product=product).delete()
+        if is_ajax:
+            return JsonResponse({'status': 'removed', 'message': 'Removed from wishlist'})
+        messages.info(request, "Product removed from wishlist")
     else:
+        # Add to wishlist
         Wishlist.objects.create(user=request.user, product=product)
-        messages.success(request, "Product added successfully!")
+        if is_ajax:
+            return JsonResponse({'status': 'added', 'message': 'Added to wishlist'})
+        messages.success(request, "Product added to wishlist")
 
     return redirect('wishlist')
 
@@ -1134,6 +1300,7 @@ def remove_wishlist(request,id):
 
 
 @login_required(login_url='login')
+@never_cache
 def check_out(request):
     user = request.user
 
@@ -1141,7 +1308,11 @@ def check_out(request):
         
         selected_ids=request.POST.getlist('selected_items[]')
     else:
-        selected_ids = CartItem.objects.filter(user=user).values_list('id', flat=True)
+        buy_now_item_id = request.GET.get('buy_now_item')
+        if buy_now_item_id:
+             selected_ids = [buy_now_item_id]
+        else:
+             selected_ids = CartItem.objects.filter(user=user).values_list('id', flat=True)
     print("Selected items:", request.POST.getlist('selected_items[]'))
 
     if not selected_ids or len(selected_ids) == 0:
@@ -1257,9 +1428,10 @@ def cancel_order(request,order_id):
 
     order.status = 'Cancelled'
     for item in order.items.all():
-        product = item.product
-        product.stock += item.quantity
-        product.save()
+        variation = item.variation
+        if variation:   
+            variation.stock += item.quantity
+            variation.save()
 
     if order.payment_method == 'Wallet':
         wallet.balance +=order.total
@@ -1284,7 +1456,29 @@ def payment_success(request):
         order.save()
     return render(request,'user/payment_sucess.html',{'order':order})    
 
+def finalize_order(order,cart_items):
+    for item in cart_items:
+        variation = item.product.variation_set.filter(size=item.size).first()
+        if variation:
+            price,_=get_best_price(variation)
+
+            if variation.stock<item.quantity:
+                raise Exception("Insufficient stock")
+            variation.stock-=item.quantity 
+            variation.save()
+
+        else:
+            price = item.unit_price
+        OrderItem.objects.create(
+            order=order,
+            product=item.product,
+            variation=variation,
+            quantity=item.quantity,
+            price=price
+        )  
+    cart_items.delete()             
 @login_required(login_url='login')
+@never_cache
 def place_orders(request):
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
@@ -1307,9 +1501,15 @@ def place_orders(request):
             address = Address.objects.get(id=selected_address, user=user)
 
         
-        cart_items = CartItem.objects.filter(user=user)
+        selected_item_ids = request.POST.getlist('selected_items[]')
+        
+        if selected_item_ids:
+            cart_items = CartItem.objects.filter(user=user, id__in=selected_item_ids)
+        else:
+            cart_items = CartItem.objects.filter(user=user)
+
         if not cart_items.exists():
-            messages.error(request, "Your cart is empty.")
+            messages.error(request, "Your cart is empty or no items selected.")
             return redirect('cart')
 
         
@@ -1339,34 +1539,14 @@ def place_orders(request):
         )
 
     
-        for item in cart_items:
-            variation = item.product.variation_set.filter(size=item.size).first()
-            if variation:
-                price, _ = get_best_price(variation)
-
-                if variation.stock < item.quantity:
-                    messages.error(request, f"Not enough stock for {variation.product.name} ({variation.size} Inch)")
-                    return redirect('cart')
-
-                variation.stock -= item.quantity
-                variation.save()
-            else:
-                price = item.unit_price
-
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                quantity=item.quantity,
-                price=price
-            )
-
-        cart_items.delete()
-
+        
         
         if payment_method == 'cod':
             order.payment_method = 'Cash on Delivery'
             order.status = 'Confirmed'
             order.save()
+
+            finalize_order(order,cart_items)
             request.session['order_id'] = order.id
             return redirect('order_confirmation')
 
@@ -1380,6 +1560,8 @@ def place_orders(request):
                 order.status = 'Confirmed'
                 order.save()
 
+                finalize_order(order,cart_items)
+
                 messages.success(request, "Payment successful using Wallet")
                 request.session['order_id'] = order.id
                 return redirect('order_confirmation')
@@ -1388,18 +1570,66 @@ def place_orders(request):
                 return redirect('checkout')
             
 
-        # RAZORPAY
+        
         elif payment_method == "razorpay":
-            order.save()
-            request.session['order_id'] = order.id
-            return JsonResponse({
-                "order_id": order.id,
-                "amount": int(total*100),  # in paise
-                "currency": "INR",
-                "razorpay_key": settings.RAZORPAY_KEY,
-            })
 
+            razorpay_payment_id = request.POST.get("razorpay_payment_id")
 
+            if razorpay_payment_id:
+
+                order.payment_method = "Razorpay"
+                order.status = "Confirmed"
+                order.razorpay_payment_id = razorpay_payment_id
+                order.save()
+                finalize_order(order,cart_items)
+                request.session['order_id'] = order.id
+
+                return redirect('order_confirmation')
+
+            else:
+                return redirect('checkout')
+    return redirect('shop')
+
+csrf_exempt
+def razorpay_webhook(request):
+
+    if request.method == "POST":
+
+        client = razorpay.Client(
+            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        )
+
+        webhook_secret = settings.RAZORPAY_WEBHOOK_SECRET
+        body = request.body
+        signature = request.headers.get("X-Razorpay-Signature")
+
+        try:
+            client.utility.verify_webhook_signature(
+                body,
+                signature,
+                webhook_secret
+            )
+
+            data = json.loads(body)
+
+            if data["event"] == "payment.captured":
+                razorpay_order_id = data["payload"]["payment"]["entity"]["order_id"]
+
+                order = Order.objects.get(razorpay_order_id=razorpay_order_id)
+                order.status = "SUCCESS"
+                order.save()
+
+            elif data["event"] == "payment.failed":
+                razorpay_order_id = data["payload"]["payment"]["entity"]["order_id"]
+
+                order = Order.objects.get(razorpay_order_id=razorpay_order_id)
+                order.status = "FAILED"
+                order.save()
+
+            return HttpResponse(status=200)
+
+        except:
+            return HttpResponse(status=400)
 
 def download_invoice_pdf(request,order_id):
     order = Order.objects.get(id=order_id,user=request.user)

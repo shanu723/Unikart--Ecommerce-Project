@@ -151,7 +151,7 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'shanumsb@gmail.com'
-EMAIL_HOST_PASSWORD = 'ctvj tevn bmpg iorm'  # NOT your Gmail password!
+EMAIL_HOST_PASSWORD = 'jgef igwu dtxb gfmi'  # NOT your Gmail password!
 
 TIME_ZONE = 'Asia/Kolkata'
 USE_TZ = True

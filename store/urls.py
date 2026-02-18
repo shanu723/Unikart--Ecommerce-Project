@@ -78,6 +78,7 @@ urlpatterns = [
     path('return-requests/<int:request_id>/<str:action>/', views.update_return_status, name='update_return_status'),
     path('wallet/',views.wallet_view,name='wallet'),
     path('add_money_to_wallet',views.add_money_to_wallet,name='add_money_to_wallet'),
+    path('admin_wallet_transactions',views.admin_wallet_transactions,name='admin_wallet_transactions'),
     path('wallet-payment-success/', views.wallet_payment_success, name='wallet_payment_success'),
     path('logout/',views.logout_view,name='logout'),
 ]

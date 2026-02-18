@@ -285,6 +285,28 @@
   </div>
 </li>
 
+<li class="nav-item">
+  <a class="nav-link" data-bs-toggle="collapse" href="#walletManagement" aria-expanded="false" aria-controls="walletManagement">
+    <span class="menu-title">Wallet Management</span>
+    <i class="mdi mdi-wallet menu-icon"></i>
+  </a>
+
+  <div class="collapse" id="walletManagement">
+    <ul class="nav flex-column sub-menu">
+
+      <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin_wallet_transactions' %}">
+          Wallet Transactions
+        </a>
+      </li>
+
+      
+
+    </ul>
+  </div>
+</li>
+
+
             <li class="nav-item">
               <a class="nav-link" href="docs/documentation.html" target="_blank">
                 <span class="menu-title">Documentation</span>

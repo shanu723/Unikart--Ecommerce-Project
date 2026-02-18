@@ -8,6 +8,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 
 
 
@@ -31,8 +32,7 @@ class UserProfile(models.Model):
     user=models.OneToOneField(User,on_delete=models.CASCADE,related_name='profile') 
     is_blocked=models.BooleanField(default=False)
     phone = models.CharField(max_length=15, blank=True, null=True)
-    profile_photo = models.ImageField(upload_to='profile_photos/',
-    default='profile_photos/default.jpg', blank=True, null=True)
+    profile_photo = models.ImageField(upload_to='profile_photos/',default='profile_photos/default.jpg', blank=True, null=True)
 
     def __str__(self): 
         return self.user.username
@@ -215,24 +215,17 @@ class Coupon(models.Model):
     def __str__(self):
         return self.code        
 
-class Wallet(models.Model):
-    user =models.OneToOneField(User,on_delete=models.CASCADE,related_name='wallet')
-    balance = models.DecimalField(max_digits=10,decimal_places=3,default=0.00)
-    updated_at = models.DateTimeField(auto_now=True)
+class CouponUsage(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE)
+    used_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ('user', 'coupon')  
+        
     def __str__(self):
-        return f"{self.user.username}'s Wallet"
+        return f"{self.user.username} used {self.coupon.code}"          
 
-    def add_money(self,amount):
-        self.balance += amount
-        self.save()
-
-    def deduct_money(self,amount):
-        if self.balance>=amount:
-            self.balance-=amount
-            self.save()
-            return True
-        return False           
 
 class Wishlist(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE)
@@ -252,4 +245,51 @@ class EmailOTP(models.Model):
         return timezone.now() > self.created_at + timezone.timedelta(minutes=5)
 
     def __str__(self):
-        return f"{self.user.username} - {self.email}"        
+        return f"{self.user.username} - {self.email}" 
+
+class Wallet(models.Model):
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Wallet"
+
+    def add_money(self, amount):
+        amount = Decimal(amount)
+        self.balance += amount
+        self.save()
+    def deduct_money(self, amount):
+        amount = Decimal(amount)
+        if self.balance >= amount:
+            self.balance -= amount
+            self.save()
+            return True
+
+        return False              
+        
+class WalletTransaction(models.Model):
+
+    TRANSACTION_TYPE = (('credit', 'Credit'), ('debit', 'Debit'))
+    SOURCE_TYPE = (('wallet_recharge', 'Wallet Recharge'), ('order_payment', 'Order Payment'), ('refund', 'Refund'))
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="wallet_transactions")
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="transactions")
+    transaction_id = models.CharField(max_length=50, unique=True, editable=False)
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPE)
+    source = models.CharField(max_length=20, choices=SOURCE_TYPE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(blank=True, null=True)
+
+
+    def save(self, *args, **kwargs):
+        if not self.transaction_id:
+            self.transaction_id = "TXN" + uuid.uuid4().hex[:10].upper()
+        super().save(*args, **kwargs)
+
+
+    def __str__(self):
+        return f"{self.transaction_id} - {self.user.username}"
+         

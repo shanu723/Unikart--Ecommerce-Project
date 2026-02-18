@@ -46,3 +46,18 @@ class CouponAdmin(admin.ModelAdmin):
     list_display = ("code", "discount_amount", "active", "valid_from", "valid_to")
     search_fields = ("code",)
     list_filter = ("active",)
+
+@admin.register(Wallet)
+class WalletAdmin(admin.ModelAdmin):
+    list_display = ('user', 'balance', 'updated_at') 
+
+@admin.register(WalletTransaction)
+class WalletTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        'transaction_id',
+        'user',
+        'transaction_type',
+        'source',
+        'amount',
+        'created_at',
+    )

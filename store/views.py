@@ -85,9 +85,22 @@ def signup_view(request):
         password=request.POST['password']
         confirm_password=request.POST['confirm_password']
         
-        if not re.match(r'^[A-Za-z0-1-]+$',username):
-            messages.error(request,"Uername can only conatain letters,numbers")
+        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-1-]+$',username):
+            messages.error(request,"Uername must contain atleast one letters,numbers")
             return redirect('signup')
+        if len(password)<6:
+            messages.error(request,"Password must be at least 8 charaedters")
+            return redirect('signiup')
+        if not re.search(r'[A-Za-z]',password):
+            messages.error(request,"Password must contain at least one letter")
+            return redirect('signup')
+        if not re.search(r'[0-9]',password):
+            messages.error(request,"Password must contain at least one letter")
+            return redirect('signup')
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', password):
+            messages.error(request, "Password must contain at least one special character.")
+            return redirect('signup')
+
         if password!=confirm_password:
             messages.error(request,'Passwords does not match')
             return redirect('signup')
@@ -119,52 +132,77 @@ def signup_view(request):
     return render(request,'signup.html')  
 
 
-def verify_otp(request,username):
-    signup_data=request.session.get('signup_data')
-    signup_otp=request.session.get('signup_otp')
-    otp_time=request.session.get('signup_otp_time')
+def verify_otp(request, username):
 
-    if signup_data['username']!=username:
-        messages.error(request,'session expired')
+    signup_data = request.session.get('signup_data')
+    signup_otp = request.session.get('signup_otp')
+    otp_time = request.session.get('signup_otp_time')
+
+    print("SESSION OTP:", signup_otp)
+
+    if not signup_data or not signup_otp or not otp_time:
+        messages.error(request, "Session expired. Please signup again.")
         return redirect('signup')
 
-    if request.method=='POST':
-        entered_otp=request.POST.get('otp')
+    if signup_data.get('username') != username:
+        messages.error(request, "Session mismatch. Please signup again.")
+        return redirect('signup')
 
-        if entered_otp==signup_otp:
-            otp_time=timezone.datetime.fromisoformat(otp_time)
-        
-            if timezone.now() - otp_time > timedelta(minutes=2):
-                
-                messages.error(request,'otp expried.try again')
-                return redirect('resend_otp',username = username)
+    otp_time_obj = timezone.datetime.fromisoformat(otp_time)
 
-            
+    if timezone.is_naive(otp_time_obj):
+        otp_time_obj = timezone.make_aware(otp_time_obj)
+
+    print("OTP TIME:", otp_time_obj)
+    print("CURRENT TIME:", timezone.now())
+
+    if timezone.now() - otp_time_obj > timedelta(minutes=2):
+        messages.error(request, "OTP expired. Please resend OTP.")
+        return redirect('resend_otp', username=username)
+
+    if request.method == 'POST':
+
+        entered_otp = request.POST.get('otp')
+        print("ENTERED OTP:", entered_otp)
+
+        if entered_otp == signup_otp:
+
+            print("OTP MATCHED — creating user")
+
             user = User.objects.create_user(
                 username=signup_data['username'],
                 password=signup_data['password'],
                 email=signup_data['email']
             )
+
             user.is_active = True
             user.save()
 
             profile, created = UserProfile.objects.get_or_create(user=user)
 
-            
-            user.backend = 'django.contrib.auth.backends.ModelBackend'
-            login(request, user)  
+            user = authenticate(
+                request,
+                username=signup_data['username'],
+                password=signup_data['password']
+            )
 
-           
-            for key in ['signup_data', 'signup_otp', 'signup_otp_time']:
-                if key in request.session:
-                    del request.session[key]
+            if user is not None:
+                login(request, user)
 
-            messages.success(request,'Account verified.')
+
+            request.session.pop('signup_data', None)
+            request.session.pop('signup_otp', None)
+            request.session.pop('signup_otp_time', None)
+
+            messages.success(request, "Account verified successfully.")
+
             return redirect('/profile/')
+
         else:
-            messages.error(request,'Invalid otp.Try again')
-            return render(request,'verify_otp.html',{'username':username})    
+            messages.error(request, "Invalid OTP. Try again.")
+
     return render(request, 'verify_otp.html', {'username': username})
+
 
 def resend_otp(request,username):
     signup_data = request.session.get('signup_data')
@@ -869,22 +907,29 @@ def update_profile(request):
     is_google_user = user.social_auth.filter(provider='google-oauth2').exists()
 
     if request.method == 'POST':
+        new_username = request.POST.get('username', '').strip()
         new_email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
         photo = request.FILES.get('profile_photo')
 
-        # Update phone and photo immediately
-        profile.phone = phone
-        if photo:
-            profile.profile_photo = photo
-        profile.save()
-
-        # Email change only if different and not Google user
-        if is_google_user and new_email != user.email:
-            messages.error(request, "Google users cannot change email")
+        # Username validation
+        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9_]{3,20}$', new_username):
+            messages.error(request, "Username must be 3-20 chars, letters/numbers/underscore only.")
             return redirect('profile')
+        if User.objects.exclude(id=user.id).filter(username=new_username).exists():
+            messages.error(request, "Username already taken.")
+            return redirect('profile')
+        user.username = new_username
 
-        if new_email and new_email != user.email:
+        # Email validation
+        if new_email != user.email:
+            if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', new_email):
+                messages.error(request, "Enter a valid email.")
+                return redirect('profile')
+            if is_google_user:
+                messages.error(request, "Google users cannot change email.")
+                return redirect('profile')
+
             otp = str(random.randint(100000, 999999))
             request.session['update_email'] = new_email
             request.session['update_otp'] = otp
@@ -899,8 +944,20 @@ def update_profile(request):
             messages.success(request, "OTP sent to new email")
             return redirect('verify_update_otp')
 
-        messages.success(request, "Profile updated")
+        # Phone validation
+        if phone:
+            if not re.match(r'^[0-9]{10}$', phone):
+                messages.error(request, "Enter a valid 10-digit phone number.")
+                return redirect('profile')
+            profile.phone = phone
+        if photo:
+            profile.profile_photo = photo
+        profile.save()
+        user.save()
+
+        messages.success(request, "Profile updated successfully.")
         return redirect('profile')
+
 
 
 @login_required
@@ -1198,11 +1255,20 @@ def admin_wallet_transactions(request):
     return render(request,'admin_templates/admin_wallet_transaction.html',{'transactions':transactions})    
 @login_required  
 def myorders_view(request):
-    user_orders=Order.objects.filter(user=request.user).order_by('-created_at')
-    paginator = Paginator(user_orders,10)
+    status = request.GET.get('status', 'All')
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    
+    if status != 'All':
+        orders = orders.filter(status=status)
+
+    paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    return render(request,'user/myorders.html',{'user_orders':user_orders,'page_obj':page_obj})
+
+    return render(request, 'user/myorders.html', {
+        'page_obj': page_obj,
+        'current_status': status
+    })
 
 @login_required
 def order_detail(request, order_id):
@@ -1276,6 +1342,7 @@ def order_list(request):
     return render(request,'admin_templates/order_list.html',{'page_obj':page_obj})
 ORDER_FLOW = {
     "Pending": ["Processing", "Shipped", "Delivered"],
+    "Confirmed": ["Processing", "Shipped","Delivered","Cancelled"],
     "Processing": ["Shipped", "Delivered"],
     "Shipped": ["Delivered"],
     "Delivered": [],
@@ -1518,117 +1585,131 @@ def finalize_order(order,cart_items):
 @login_required(login_url='login')
 @never_cache
 def place_orders(request):
-    if request.method == 'POST':
-        payment_method = request.POST.get('payment_method')
-        wallet = Wallet.objects.get(user=request.user)
-        selected_address = request.POST.get('selected_address')
-        user = request.user
-        print("POST data:", request.POST)
-        print("selected_address:", selected_address)
-        
-        if selected_address == "new":
-            address = Address.objects.create(
-                user=user,
-                street=request.POST.get('street'),
-                city=request.POST.get('city'),
-                district=request.POST.get('district'),
-                state=request.POST.get('state'),
-                pincode=request.POST.get('pincode'),
-            )
-        else:
-            address = Address.objects.get(id=selected_address, user=user)
 
-        
-        selected_item_ids = request.POST.getlist('selected_items[]')
-        
-        if selected_item_ids:
-            cart_items = CartItem.objects.filter(user=user, id__in=selected_item_ids)
-        else:
-            cart_items = CartItem.objects.filter(user=user)
+    if request.method != 'POST':
+        return redirect('shop')
 
-        if not cart_items.exists():
-            messages.error(request, "Your cart is empty or no items selected.")
-            return redirect('cart')
+    user = request.user
+    payment_method = request.POST.get('payment_method')
+    wallet = Wallet.objects.get(user=user)
 
-        
-        subtotal = sum(item.unit_price * item.quantity for item in cart_items)
-        shipping = 50 if subtotal > 500 else 0
+    selected_address = request.POST.get('selected_address')
 
-        discount = 0
-        coupon=None
-        coupon_id = request.session.get("coupon_id")
-        if coupon_id:
-            try:
-                coupon = Coupon.objects.get(id=coupon_id, active=True)
-                discount = coupon.discount_amount
-            except Coupon.DoesNotExist:
-                pass
-
-        total = subtotal + shipping - discount
-
-        order = Order.objects.create(
+    if selected_address == "new":
+        address = Address.objects.create(
             user=user,
-            address=address,
-            subtotal=subtotal,
-            shipping=shipping,
-            discount=discount,
-            total=total,
-
-            payment_method=payment_method,
-            status="Pending",
+            street=request.POST.get('street'),
+            city=request.POST.get('city'),
+            district=request.POST.get('district'),
+            state=request.POST.get('state'),
+            pincode=request.POST.get('pincode'),
         )
+    else:
+        address = Address.objects.get(id=selected_address, user=user)
 
-    
-        
-        
-        if payment_method == 'cod':
-            order.payment_method = 'Cash on Delivery'
-            order.status = 'Confirmed'
+    selected_item_ids = request.POST.getlist('selected_items[]')
+
+    if selected_item_ids:
+        cart_items = CartItem.objects.filter(user=user, id__in=selected_item_ids)
+    else:
+        cart_items = CartItem.objects.filter(user=user)
+
+    if not cart_items.exists():
+        messages.error(request, "Your cart is empty or no items selected.")
+        return redirect('cart')
+
+    subtotal = sum(item.unit_price * item.quantity for item in cart_items)
+    shipping = 50 if subtotal > 500 else 0
+
+    discount = 0
+    coupon_id = request.session.get("coupon_id")
+
+    if coupon_id:
+        try:
+            coupon = Coupon.objects.get(id=coupon_id, active=True)
+            discount = coupon.discount_amount
+        except Coupon.DoesNotExist:
+            pass
+
+    total = subtotal + shipping - discount
+
+    order = Order.objects.create(
+        user=user,
+        address=address,
+        subtotal=subtotal,
+        shipping=shipping,
+        discount=discount,
+        total=total,
+        payment_method=payment_method,
+        status="Pending",
+    )
+
+    if payment_method == "razorpay":
+
+        razorpay_payment_id = request.POST.get("razorpay_payment_id")
+
+        if razorpay_payment_id:
+
+            order.payment_method = "Razorpay"
+            order.status = "Processing"
+            order.razorpay_payment_id = razorpay_payment_id
             order.save()
 
-            finalize_order(order,cart_items)
+            finalize_order(order, cart_items)
+
             request.session['order_id'] = order.id
+
             return redirect('order_confirmation')
 
-        
-        elif payment_method == 'Wallet':
-            if wallet.balance >= total:
-                wallet.balance -= total
-                wallet.save()
+        else:
+            order.delete()
+            return redirect('checkout')
 
-                order.payment_method = 'Wallet'
-                order.status = 'Confirmed'
-                order.save()
+    elif payment_method == "cod":
 
-                finalize_order(order,cart_items)
+        order.payment_method = "Cash on Delivery"
+        order.status = "Processing"
+        order.save()
 
-                messages.success(request, "Payment successful using Wallet")
-                request.session['order_id'] = order.id
-                return redirect('order_confirmation')
-            else:
-                messages.error(request, "Insufficient wallet balance")
-                return redirect('checkout')
-            
+        finalize_order(order, cart_items)
 
-        
-        elif payment_method == "razorpay":
+        request.session['order_id'] = order.id
 
-            razorpay_payment_id = request.POST.get("razorpay_payment_id")
+        return redirect('order_confirmation')
 
-            if razorpay_payment_id:
+    elif payment_method == "Wallet":
 
-                order.payment_method = "Razorpay"
-                order.status = "Confirmed"
-                order.razorpay_payment_id = razorpay_payment_id
-                order.save()
-                finalize_order(order,cart_items)
-                request.session['order_id'] = order.id
+        if wallet.balance >= total:
 
-                return redirect('order_confirmation')
+            wallet.balance -= total
+            wallet.save()
 
-            else:
-                return redirect('checkout')
-    return redirect('shop')
+            order.payment_method = "Wallet"
+            order.status = "Processing"
+            order.save()
+
+            finalize_order(order, cart_items)
+
+            messages.success(request, "Payment successful using Wallet")
+
+            request.session['order_id'] = order.id
+
+            return redirect('order_confirmation')
+
+        else:
+
+            order.delete()
+
+            messages.error(request, "Insufficient wallet balance")
+
+            return redirect('checkout')
+
+    order.delete()
+
+    messages.error(request, "Invalid payment method")
+
+    return redirect('checkout')
+
 
 csrf_exempt
 def razorpay_webhook(request):
@@ -1704,10 +1785,10 @@ def update_return_status(request,request_id,action):
 
     if action == 'accept':
         return_request.status = 'Accepted'
-        return_request.order.status = 'Return Accepted '
+        return_request.order.status = 'Returned'
     elif action == 'reject':
         return_request.status = 'Rejected'
-        return_request.order.status ='Return Rejected'
+        return_request.order.status =''
 
     return_request.order.save()    
     return_request.save()

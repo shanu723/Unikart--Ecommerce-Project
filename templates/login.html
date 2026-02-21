@@ -7,7 +7,8 @@
     <title>Watch shop | eCommers</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="manifest" href="site.webmanifest">
+    <!--link rel="manifest" href="{% static 'site.webmanifest' %}"-->
+
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'assets/img/favicon.ico' %}">
 
     <!-- CSS here -->
@@ -161,7 +162,9 @@
                             <div class="single-footer-caption mb-30">
                                 <!-- logo -->
                                 <div class="footer-logo">
-                                    <a href="index.html"><img src="assets/img/logo/logo2_footer.png" alt=""></a>
+                                    <a href="{% url 'home' %}">
+                                        <img src="{% static 'assets/img/logo/logo2_footer.png' %}" alt="">
+                                    </a>
                                 </div>
                                 <div class="footer-tittle">
                                     <div class="footer-pera">
@@ -248,6 +251,7 @@
     <!-- Search model end -->
     
     <!-- JS here -->
+     {% block script %}
 
    <script src="{% static 'assets/js/vendor/modernizr-3.5.0.min.js' %}"></script>
 <!-- Jquery, Popper, Bootstrap -->
@@ -283,7 +287,7 @@
 <script src="{% static 'assets/js/plugins.js' %}"></script>
 <script src="{% static 'assets/js/main.js' %}"></script>
 
-
+{% endblock %}
 </body>
     
 </html>

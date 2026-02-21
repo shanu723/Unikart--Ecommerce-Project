@@ -32,6 +32,8 @@ class UserProfile(models.Model):
     user=models.OneToOneField(User,on_delete=models.CASCADE,related_name='profile') 
     is_blocked=models.BooleanField(default=False)
     phone = models.CharField(max_length=15, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
     profile_photo = models.ImageField(upload_to='profile_photos/',default='profile_photos/default.jpg', blank=True, null=True)
 
     def __str__(self): 
@@ -154,6 +156,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ("Pending", "Pending"),
         ("Processing", "Processing"),
+        ("Confirmed", "Confirmed"),
         ("Shipped", "Shipped"),
         ("Delivered", "Delivered"),
         ("Cancelled", "Cancelled"),

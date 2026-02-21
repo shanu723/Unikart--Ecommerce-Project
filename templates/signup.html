@@ -81,15 +81,28 @@ document.addEventListener("DOMContentLoaded", function () {
     const passwordError = document.getElementById("passwordError");
     const confirmError = document.getElementById("confirmError");
 
-    const usernamePattern = /^[A-Za-z0-9_]+$/;
+    const usernamePattern = /^(?=.*[A-Za-z0-9])[A-Za-z0-9_]+$/;
+
 
     username.addEventListener("input", function () {
-        if (!usernamePattern.test(username.value)) {
-            usernameError.textContent = "Only letters, numbers, underscore allowed.";
-        } else {
-            usernameError.textContent = "";
-        }
-    });
+
+    const value = username.value;
+
+    if (value.length === 0) {
+        usernameError.textContent = "Username is required.";
+    }
+    else if (value.length < 3) {
+        usernameError.textContent = "Username must be at least 3 characters.";
+    }
+    else if (!/^(?=.*[A-Za-z0-9])[A-Za-z0-9_]+$/.test(value)) {
+        usernameError.textContent = "Must contain at least one letter or number. Only letters, numbers, underscore allowed.";
+    }
+    else {
+        usernameError.textContent = "";
+    }
+
+});
+
 
     email.addEventListener("input", function () {
         if (!email.value.includes("@")) {
@@ -98,22 +111,50 @@ document.addEventListener("DOMContentLoaded", function () {
             emailError.textContent = "";
         }
     });
-
+    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
     password.addEventListener("input", function () {
-        if (password.value.length < 6) {
-            passwordError.textContent = "Password must be at least 6 characters.";
-        } else {
-            passwordError.textContent = "";
-        }
-    });
+
+    const value = password.value;
+
+    if (value.length === 0) {
+        passwordError.textContent = "Password is required.";
+    }
+    else if (value.length < 8) {
+        passwordError.textContent = "Password must be at least 8 characters.";
+    }
+    else if (!/(?=.*[a-z])/.test(value)) {
+        passwordError.textContent = "Must contain at least one lowercase letter.";
+    }
+    else if (!/(?=.*[A-Z])/.test(value)) {
+        passwordError.textContent = "Must contain at least one uppercase letter.";
+    }
+    else if (!/(?=.*\d)/.test(value)) {
+        passwordError.textContent = "Must contain at least one number.";
+    }
+    else if (!/(?=.*[@$!%*?&])/.test(value)) {
+        passwordError.textContent = "Must contain at least one special character.";
+    }
+    else {
+        passwordError.textContent = "";
+    }
+
+});
+
 
     confirmPassword.addEventListener("input", function () {
-        if (password.value !== confirmPassword.value) {
-            confirmError.textContent = "Passwords do not match.";
-        } else {
-            confirmError.textContent = "";
-        }
-    });
+
+    if (confirmPassword.value.length === 0) {
+        confirmError.textContent = "Please confirm your password.";
+    }
+    else if (password.value !== confirmPassword.value) {
+        confirmError.textContent = "Passwords do not match.";
+    }
+    else {
+        confirmError.textContent = "";
+    }
+
+});
+
 
 });
 </script>

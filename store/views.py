@@ -287,7 +287,7 @@ def add_category(request):
 
         if Category.objects.filter(name__iexact=name):
             messages.error(request,"Category Already exists")
-            return redirect('admin_templates/add_category')
+            return redirect('add_category')
 
         else:
             Category.objects.create(name=name,status=status)
@@ -342,67 +342,101 @@ def product_list(request):
 
 @login_required
 def add_product(request):
-    
-    categories = Category.objects.all()
-    if request.method == 'POST':
+    categories= Category.objects.all()
+
+    if request.method== 'POST':
+
         try:
             product_name = request.POST.get('name')
             brand = request.POST.get('brand')
             description = request.POST.get('description')
-            status = request.POST.get('status') == 'on'
+            status = 'status' in request.POST
             category_id = request.POST.get('category')
             stock_list = request.POST.getlist('stock[]')
-            
+
             category = Category.objects.get(id=category_id)
 
+            images = request.FILES.getlist('product_images[]')
+            allowed_types = ['image/jpeg','image/png','image/webp']
+            max_size_mb = 2
+
+            if len(images)<3:
+                messages.error(request,'Please upload at least three images')
+                return redirect('add_product')
+
+            for image in images:
+                if image.content_type not in allowed_types:
+                    messages.error(request,f'{image.name} is not allwoed ')   
+                    return redirect('add_product')
+                if image.size>max_size_mb * 1024*1024:
+                    messages.error(request,f'{image.name} exceeds {max_size_mb}')
+                    return redirect('add_product')
 
             product = Product.objects.create(
-                name=product_name,
-                brand=brand,
-                description=description,
-                status=status,
-                
-                category=category
-            )
+                name = product_name,
+                brand = brand,
+                description = description,
+                status = status,
+                category = category        
+                )      
 
-        
-            size = request.POST.getlist('size[]')
-            original_price = request.POST.getlist('original_price[]')
-            
+            size_list = request.POST.getlist('size[]')
+            price_list = request.POST.getlist('original_price[]') 
             variation_status = request.POST.getlist('variation_status[]')
 
-            for i in range(len(size)):
-                is_active = variation_status[i] == 'on' if i < len(variation_status) else False
+            for i in range(len(size_list)):
+                price = float(price_list[i]) if i<len(price_list) else 0
+                stock = int(stock_list[i]) if i <len(stock_list) else 0
+
+                if price <= 0:
+                    messages.error(request,f"Variation {size_list[i]} has invalid price")
+                    product.delete()
+                    return redirect('add_product')
+
+                if stock <0:
+                    messages.error(request,f'Variation {size_list[i]} has invalid stock number')
+                    product.delete()
+                    return redirect('add_product')    
+
+                is_active = variation_status[i] == 'on' if i< len(variation_status) else False 
+
                 Variation.objects.create(
-                    product=product,
-                    size=size[i],
-                    original_price=original_price[i],
-                    
-                    stock=int(stock_list[i]) if i < len(stock_list) else 0,
-                    status=is_active
+                    product = product,
+                    size = size_list[i],
+                    original_price = price,
+                    stock = stock,
+                    status = is_active
                 )
 
-        
             keys = request.POST.getlist('highlight_keys[]')
             values = request.POST.getlist('highlight_values[]')
 
-            for k, v in zip(keys, values):
+            for k,v in zip(keys,values):
                 if k.strip() and v.strip():
-                    Highlight.objects.create(product=product, key=k.strip(), value=v.strip())
+                    Highlight.objects.create(product=product,key=k.strip(),value=v.strip())
 
-                       
-            for image in request.FILES.getlist('product_images[]'):
-                ProductImages.objects.create(product=product, product_image=image)
+            primary_index = int(request.POST.get('primary_image_index',0))
+            for idx,image in enumerate(images):
+                    
+                ProductImages.objects.create(
+                        product=product,
+                        product_image=image,
+                        is_primary=(idx==primary_index)
+                    )     
 
-            messages.success(request, 'Product added successfully!')
-            return redirect('admin_dashboard')
+            messages.success(request,'Product added successfully!')
+            return redirect('products')
 
         except Exception as e:
             print(e)
-            messages.error(request, f"Something went wrong: {e}")
+            messages.error(request,'f"Something went wrong:{e}')
             return redirect('add_product')
 
-    return render(request, 'admin_templates/add_product.html', {'categories': categories})
+    return render(request,'admin_templates/add_product.html',{'categories':categories})                   
+
+
+
+
 
 @login_required
 def edit_product(request,product_id):

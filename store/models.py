@@ -110,7 +110,7 @@ def getfilename(instance,filename):
 class ProductImages(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='productimages')
     product_image = models.ImageField(upload_to=getfilename, validators=[FileExtensionValidator(allowed_extensions=['jpg','png','webp','jpeg'])])
-
+    is_primary = models.BooleanField(default=False)
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)    
         try:

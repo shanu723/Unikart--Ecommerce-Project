@@ -117,7 +117,7 @@ class ProductImages(models.Model):
             img = Image.open(self.product_image.path)
             max_size = (800,800)
             
-            img = ImageOps.fit(img,max_size,images.LANCZOS)
+            img = ImageOps.fit(img,max_size,image.LANCZOS)
             img.save(self.product_image.path)
             
         except Exception as e:

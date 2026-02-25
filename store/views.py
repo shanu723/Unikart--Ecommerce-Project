@@ -349,7 +349,32 @@ def add_product(request):
         try:
             product_name = request.POST.get('name')
             brand = request.POST.get('brand')
+
             description = request.POST.get('description')
+
+            if not product_name:
+                messages.error(request,"Product name is required")
+                return redirect('add_product')
+
+            if not re.search(r'[A-Za-z0-9]',product_name):
+                messages.error(request,"Product name must contains letters")
+                return redirect('add_product')
+
+            if not brand:
+                messages.error(request,"Brand is required")
+                return redirect('add_product')
+
+            if not re.search (r'[A-Za-z0-9]',brand):
+                messages.error(request,"Brand must containes letters")
+                return redirect('add_product')
+
+            if not description:
+                messages.error(request,'Description is required')
+                return redirect('add_product')
+
+            if not re.search(r'[A-Za-z0-9]',description):
+                messages.error(request,"Description must containes letters")        
+                return redirect('add_product')
             status = 'status' in request.POST
             category_id = request.POST.get('category')
             stock_list = request.POST.getlist('stock[]')
@@ -445,47 +470,164 @@ def edit_product(request,product_id):
 
     if request.method =='POST':
         try:
-            product.name=request.POST.get('name')
-            product.brand=request.POST.get('brand')
-            product.description=request.POST.get('description')
-            product.status=request.POST.get('status')=='on'
+            product_name=request.POST.get('name','').strip()
+            brand=request.POST.get('brand','').strip()
+            description=request.POST.get('description','').strip()
+            existing_variations = list(product.variation_set.all())
+            existing_highlights = list(product.highlights.all())
+            images = request.FILES.getlist('product_images[]')
+
+            if not product_name:
+                messages.error(request,"Product name is required")
+                return redirect('add_product')
+
+            if not re.search(r'[A-Za-z0-9]',product_name):
+                messages.error(request,"Product name must contains letters")
+                return render(request, 'admin_templates/edit_product.html', {
+                    'product': product,
+                    'existing_variations': existing_variations,
+                })
+            if not brand:
+                messages.error(request,'Brand name is requied')
+                return redirect('add_product')
+
+            if not re.search(r'[A-Za-z0-9]',brand):
+                messages.error(request,'Brand name must contains letters')
+                return redirect('add_product')
+
+            if not description:
+                messages.error(request,'Description is required')
+                return redirect('add_product')
+
+            if not re.search(r'[A-Za-z0-9]',description):
+                messages.error(request,'DEscription must contain letters')
+                return redirect('add_product')     
+
+            product.name = product_name
+            product.brand = brand
+            product.description = description
+
+            
+            product.status=request.POST.get('status')=='1'
             category_id=request.POST.get('category')
             product.category=Category.objects.get(id=category_id)
             product.save()
-
 
             size_list=request.POST.getlist('size[]')
             price_list=request.POST.getlist('original_price[]')
             stock_list = request.POST.getlist('stock[]')
             variation_status = request.POST.getlist('variation_status[]')
 
-            product.variation_set.all().delete()
+            
 
-            for i in range(len(size_list)):
-                is_active = variation_status[i] == 'on' if i < len(variation_status) else False
-                Variation.objects.create(
-                    product=product,
-                    size=size_list[i],
-                    original_price=price_list[i],
-                    stock=int(stock_list[i]) if i < len(stock_list) else 0,
-                    status=is_active
-                )
+            for i in range(len(size_list)):        
+
+                size = size_list[i]
+
+                price = float(price_list[i]) if i < len(price_list) and price_list[i] else 0
+
+                stock = int(stock_list[i]) if i < len(stock_list) and stock_list[i] else 0
+
+                is_active = i < len(variation_status) and variation_status[i] == 'on'  
+                
+
+                if price <= 0:
+                    messages.error(request,f"Invalid price for size {size}")
+                    return redirect('edit_product',product_id=product.id)
+
+                if stock <0:
+                    messages.error(request,f"Invalid stock for size {size}")
+                    return redirect('edit_product',product_id=product.id)
+
+                if i< len(existing_variations):
+                    variation = existing_variations[i]  
+                    variation.size = size
+                    variation.original_price=price
+                    variation.stock=stock
+                    variation.status = is_active
+                    variation.save()
+
+                else:
+                    Variation.objects.create(
+                        product=product,
+                        size=size,
+                        original_price=price,
+                        stock=stock,
+                        status=is_active
+                    )          
+                
 
             
-            product.highlights.all().delete()
+            
             keys = request.POST.getlist('highlight_keys[]')
             values = request.POST.getlist('highlight_values[]')
-            for k, v in zip(keys, values):
-                if k.strip() and v.strip():
-                    Highlight.objects.create(product=product, key=k.strip(), value=v.strip())
+            
+            
 
-            if request.FILES.getlist('product_images'):
-                product.productimages.all().delete()
-                for image in request.FILES.getlist('product_images[]'):
-                    ProductImages.objects.create(product=product, product_image=image)
+            for i in range(len(keys)):
+                key = keys[i].strip()
+                value = values[i].strip() 
+
+                if not key or not value:
+                    continue
+
+                if i < len(existing_highlights):
+
+                    highlight = existing_highlights[i]
+                    highlight.keys = key
+                    highlight.value = value
+                    highlight.save()
+
+                else:
+                    Highlight.objects.create(
+                        product=product,
+                        key=key,
+                        value=value
+                    )         
+
+            new_images = request.FILES.getlist('images[]')
+
+            deleted_images = request.POST.get('deleted_images','')
+            deleted_ids=[]
+            if deleted_images:
+                deleted_ids = deleted_images.split(',')
+                ProductImages.objects.filter(id__in = deleted_ids,product=product).delete()
+            remaining_existing_count =product.productimages.exclude(id__in=deleted_ids).count()
+            total_images = remaining_existing_count+len(new_images)
+
+            if total_images < 3:
+                messages.error(request,"Minimum 3 images are required")
+                return redirect('edit_product',product_id=product.id)
+
+            if images:
+                
+                allowed_types = ['image/jpeg','image/png','image/webp']
+                max_size = 2 * 1024 *1024
+
+                for image in images:
+
+                    if image.content_type not in allowed_types:
+                        messages.error(request,f"{image.name} invalid format")
+                        return redirect('edit_product',product_id=product.id)
+
+                    if image.size > max_size:
+                        messages.error(request,f"{image.name} exceeds 2MB")
+                        return redirect('edit_product',product_id=product.id)
+                for image in images:
+                    ProductImages.objects.create(
+                        product=product,
+                        product_image = image,
+                        is_primary= False
+                    )     
+
+                primary_id = request.POST.get('primary_image_id')
+
+                if primary_id:
+                    product.productimages.update(is_primary=False)
+                    ProductImages.objects.filter(id = primary_id,product=product).update(is_primary=True)     
 
             messages.success(request, 'Product updated successfully!')
-            return redirect('admin_dashboard')
+            return redirect('products')
 
         except Exception as e:
             print(e)

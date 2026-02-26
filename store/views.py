@@ -16,7 +16,7 @@ from django.shortcuts import render,redirect
 from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib.auth import authenticate, login,logout
 from django.db import transaction
-from django.db.models import Min,Max,Sum
+from django.db.models import Min,Max,Sum,Prefetch
 from django.contrib import messages
 from datetime import timedelta
 from .models import Product, Variation, Highlight, ProductImages,UserOTP,Category,Offer,UserProfile,Address,Order,CartItem,Order,Wallet,Wishlist,Coupon,OrderItem,ReturnRequest,WalletTransaction,CouponUsage
@@ -658,8 +658,14 @@ def shop(request):
    
 
     products = Product.objects.filter(status=True)\
-                    .annotate(min_var_price=Min('variation__original_price'))
-
+    .annotate(min_var_price=Min('variation__original_price'))\
+    .prefetch_related(
+        Prefetch(
+            'productimages',
+            queryset=ProductImages.objects.filter(is_primary=True),
+            to_attr='primary_image_obj'
+        )
+    )
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price and max_price:
@@ -767,31 +773,34 @@ def add_offer(request):
         form = OfferForm(request.POST)
         if form.is_valid():
             offer = form.save(commit=False)
+
+           
+
             offer_type = form.cleaned_data.get('offer_type')
-            offer.save()  
+            product = form.cleaned_data.get('product')
+            category = form.cleaned_data.get('category')
+       
 
             if offer_type == 'product':
-                product_id = request.POST.get('product')
-                if product_id:
-                    try:
-                        product = Product.objects.get(id=product_id)
-                        product.offer = offer
-                        product.save()
-                    except Product.DoesNotExist:
-                        pass
-
+                if not product:
+                    messages.error(request,"Please select a Product")
+                    return redirect('add_offer')
+                offer.product = product    
+                offer.category = None
             elif offer_type == 'category':
-                category_id = request.POST.get('category')
-                if category_id:
-                    try:
-                        category = Category.objects.get(id=category_id)
-                        offer.category = category
-                        offer.save()
-                    except Category.DoesNotExist:
-                        pass
-
+                if not category:
+                    messages.error(request,"Please select a category")
+                    return redirect('add_offer')
+                offer.category = category
+                offer.product = None
+            offer.full_clean()    
+            offer.save()        
+                   
             messages.success(request, "Offer created successfully!")
             return redirect('offers_list')
+        else:
+            messages.error(request,"Flat value cant be greater than original price")
+
     else:
         form = OfferForm()
     

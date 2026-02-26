@@ -1,39 +1,63 @@
 from django.utils import timezone
 
 def get_best_price(variation):
-    """
-    Returns the best price and discount for a variation,
-    considering product-level and category-level offers only.
-    """
-    best_price = variation.original_price
-    best_discount = 0
-    now = timezone.now()
 
-    # 1. Check product offer
-    product_offer = variation.product.offer
-    if product_offer and product_offer.is_active and product_offer.valid_from <= now <= product_offer.valid_to:
-        if product_offer.discount_type == 'flat':
-            discount_amount = product_offer.dis_value
-        else:  # percentage
-            discount_amount = variation.original_price * product_offer.dis_value / 100
-        price = variation.original_price - discount_amount
-        discount = round(discount_amount / variation.original_price * 100)
+    original_price = variation.original_price
+    best_price = original_price
+    best_discount = 0
+
+    now = timezone.localtime()
+
+    all_offers = variation.product.offer_on_this_product.all()
+
+    product_offers = variation.product.offer_on_this_product.filter(
+        is_active=True,
+        valid_from__lte=now,
+        valid_to__gte=now
+    )
+    
+    for offer in product_offers:
+      
+        if offer.discount_type == "flat":
+            discount_amount = min(offer.dis_value, original_price)
+        else:
+            discount_amount = (original_price * offer.dis_value) / 100
+
+        price = original_price - discount_amount
+        price = max(price, 0)
+
+        discount = round((discount_amount / original_price) * 100) if original_price else 0
+
         if price < best_price:
             best_price = price
             best_discount = discount
 
-    # 2. Check category offers
+   
     category = variation.product.category
+
     if category:
-        for offer in category.offer_on_this_category.filter(is_active=True, valid_from__lte=now, valid_to__gte=now):
-            if offer.discount_type == 'flat':
-                discount_amount = offer.dis_value
+
+        category_offers = category.offer_on_this_category.filter(
+            is_active=True,
+            valid_from__lte=now,
+            valid_to__gte=now
+        )
+     
+        for offer in category_offers:
+
+            if offer.discount_type == "flat":
+                discount_amount = min(offer.dis_value, original_price)
             else:
-                discount_amount = variation.original_price * offer.dis_value / 100
-            price = variation.original_price - discount_amount
-            discount = round(discount_amount / variation.original_price * 100)
+                discount_amount = (original_price * offer.dis_value) / 100
+
+            price = original_price - discount_amount
+            price = max(price, 0)
+
+            discount = round((discount_amount / original_price) * 100) if original_price else 0
+
             if price < best_price:
                 best_price = price
                 best_discount = discount
+
 
     return round(best_price, 2), best_discount

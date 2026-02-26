@@ -71,7 +71,7 @@
         <div class="row mt-4" id="imagePreview"></div>
 
         <input type="hidden" name="deleted_images" id="deletedImages">
-        <input type="hidden" name="primary_image_index" id="primaryImageIndex" value="0">
+        <input type="hidden" name="primary_image_id" id="primaryImageId" value="0">
     </div>
 </div>
                 <!-- ================= VARIATIONS ================= -->
@@ -589,20 +589,12 @@ function renderExistingImages() {
 
                 <div class="text-center mt-1">
 
-                    <div style="margin-top:5px;">
+                    <input type="radio"
+                        name="primary_image"
+                        value="existing_${img.id}"
+                        ${img.is_primary ? "checked" : ""}>
 
-                        <input type="radio"
-                            name="primary_image_index"
-                            value="${index}"
-                            ${index === 0 ? "checked" : ""}
-                            onclick="setPrimary(${index})"
-                            style="width:16px;height:16px;cursor:pointer;">
-
-                        <label class="form-check-label small">
-                            Primary
-                        </label>
-
-                    </div>
+                    <label class="small">Primary</label>
 
                 </div>
 
@@ -688,8 +680,6 @@ imageInput.addEventListener('change', function () {
 
 function showNewImagePreviews() {
 
-    
-
     Array.from(dt.files).forEach((file, index) => {
 
         const reader = new FileReader();
@@ -714,20 +704,11 @@ function showNewImagePreviews() {
 
                     <div class="text-center mt-1">
 
-                        <div class="form-check d-inline-block">
+                        <input type="radio"
+                               name="primary_image"
+                               value="new_${index}">
 
-                            <input type="radio"
-                                   class="form-check-input"
-                                   name="primary_image_index"
-                                   value="${index}"
-                                   ${index === 0 ? "checked" : ""}
-                                   onclick="setPrimary(${index})">
-
-                            <label class="form-check-label small">
-                                Primary
-                            </label>
-
-                        </div>
+                        <label class="small">Primary</label>
 
                     </div>
 
@@ -743,10 +724,7 @@ function showNewImagePreviews() {
 
     });
 
-    primaryImageIndex.value = 0;
-
 }
-
 
 // ================= REMOVE NEW IMAGE =================
 

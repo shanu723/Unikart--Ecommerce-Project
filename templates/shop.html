@@ -354,12 +354,15 @@
                                 <!-- Changed back to col-xl-4 to show 3 products per row on desktop -->
                                 <div class="single-popular-items mb-50 text-center">
                                     <div class="popular-img">
-                                        {% if product.productimages.first %}
-                                        <img src="{{ product.productimages.first.product_image.url }}"
-                                            alt="{{ product.name }}">
-                                        {% else %}
-                                        <p>No image for {{ product.name }}</p>
-                                        {% endif %}
+
+                                {% if product.primary_image_obj %}
+                                    <img src="{{ product.primary_image_obj.0.product_image.url }}"
+                                        alt="{{ product.name }}">
+                                {% else %}
+                                    <p>No image available</p>
+                                {% endif %}
+
+
 
                                         <a href="{% url 'product' product.id %}">
                                             <div class="img-cap">

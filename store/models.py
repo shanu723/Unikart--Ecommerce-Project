@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.core.validators import MinValueValidator, FileExtensionValidator,ValidationError
 from django.utils import timezone
 import uuid, os
 from PIL import Image,ImageOps
@@ -9,6 +9,8 @@ from django.dispatch import receiver
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
+from django.db.models import Min
+
 
 
 
@@ -128,30 +130,72 @@ class ProductImages(models.Model):
 
 
 class Offer(models.Model):
-    title=models.CharField(max_length=100,null=True,blank=True)
-    DISCOUNT_CHOICES=(
-        ('percentage','Percentage'),
-        ('flat','Flat')
+
+    title = models.CharField(max_length=100, null=True, blank=True)
+    DISCOUNT_CHOICES = (
+        ('percentage', 'Percentage'),
+        ('flat', 'Flat')
     )
-    discount_type=models.CharField(max_length=20,choices=DISCOUNT_CHOICES)
-    dis_value=models.PositiveIntegerField()
-    is_active=models.BooleanField(default=True)
-    valid_from=models.DateTimeField()
-    valid_to=models.DateTimeField()
-    OFFER_TYPES=(
-        ('category','Category'),
-        ('product','Product')
+    discount_type = models.CharField(max_length=20, choices=DISCOUNT_CHOICES)
+    dis_value = models.PositiveIntegerField()
+    is_active = models.BooleanField(default=True)
+    valid_from = models.DateTimeField(default=timezone.now)
+    valid_to = models.DateTimeField()
+    OFFER_TYPES = (
+        ('category', 'Category'),
+        ('product', 'Product')
     )
-    offer_type=models.CharField(max_length=30,choices=OFFER_TYPES)
-    category=models.ForeignKey(Category,on_delete=models.CASCADE,null=True,blank=True,related_name='offer_on_this_category')
-    product=models.ForeignKey(Product,on_delete=models.CASCADE,null=True,blank=True,related_name='offers_on_this_product')
+    offer_type = models.CharField(max_length=30, choices=OFFER_TYPES)
+    category = models.ForeignKey(Category,on_delete=models.CASCADE,null=True,blank=True,related_name='offer_on_this_category')
+    product = models.ForeignKey(Product,on_delete=models.CASCADE,null=True,blank=True,related_name='offer_on_this_product'
+    )
     def __str__(self):
         return self.title or f"Offer {self.id}"
+ 
+    def clean(self):
+       
+        if self.discount_type == 'percentage':
+            if self.dis_value <= 0 or self.dis_value > 90:
+                raise ValidationError("Percentage discount must be between 1 and 90")
+     
+        elif self.discount_type == 'flat':
+            if self.dis_value <= 0:
+                raise ValidationError("Flat discount must be greater than 0")
+          
+            if self.offer_type == 'product' and self.product:
+
+                min_price = self.product.variation_set.aggregate(Min('original_price'))['original_price__min']
+
+                if min_price and self.dis_value > min_price:
+                    raise ValidationError(f"Flat discount cannot exceed product price (₹{min_price})")
+            
+            if self.offer_type == 'category' and self.category:
+                min_price = Variation.objects.filter(product__category=self.category).aggregate(Min('original_price'))['original_price__min']
+                if min_price and self.dis_value > min_price:
+                    raise ValidationError(
+                        f"Flat discount cannot exceed lowest product price in this category (₹{min_price})"
+                    )
+
+        if self.valid_to <= self.valid_from:
+
+            raise ValidationError(
+                "Valid To must be greater than Valid From"
+            )
 
     def is_valid(self):
-        now=timezone.now()
+        now = timezone.now()
         return self.is_active and self.valid_from <= now <= self.valid_to
 
+    def get_status(self):
+        now = timezone.localtime()
+        if not self.is_active:
+            return 'Inactive'
+        elif self.valid_from > now:
+            return 'Upcoming'
+        elif self.valid_to < now:
+            return 'Expired'
+        else:
+            return 'Active'
 class Order(models.Model):
     STATUS_CHOICES = [
         ("Pending", "Pending"),

@@ -96,38 +96,65 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const offerTypeSelect = document.getElementById('id_offer_type');
-        const categoryField = document.getElementById('category_field');
-        const productField = document.getElementById('product_field');
-        const categorySelect = document.getElementById('id_category');
-        const productSelect = document.getElementById('id_product');
+document.addEventListener('DOMContentLoaded', function() {
 
-        function toggleOfferTypeFields() {
-            const selectedType = offerTypeSelect.value;
+    const offerTypeSelect = document.getElementById('id_offer_type');
+    const categoryField = document.getElementById('category_field');
+    const productField = document.getElementById('product_field');
+    const categorySelect = document.getElementById('id_category');
+    const productSelect = document.getElementById('id_product');
 
-            // Reset and hide both fields first
-            categoryField.style.display = 'none';
-            productField.style.display = 'none';
-            categorySelect.removeAttribute('required');
-            productSelect.removeAttribute('required');
-            categorySelect.value = ''; // Clear selected value
-            productSelect.value = ''; // Clear selected value
+    const discountType = document.getElementById('id_discount_type');
+    const discountValue = document.getElementById('id_dis_value');
 
-            if (selectedType === 'category') {
-                categoryField.style.display = 'block';
-                categorySelect.setAttribute('required', 'required'); // Make required if selected
-            } else if (selectedType === 'product') {
-                productField.style.display = 'block';
-                productSelect.setAttribute('required', 'required'); // Make required if selected
-            }
+    function toggleOfferTypeFields() {
+
+        const selectedType = offerTypeSelect.value;
+
+        categoryField.style.display = 'none';
+        productField.style.display = 'none';
+
+        categorySelect.removeAttribute('required');
+        productSelect.removeAttribute('required');
+
+        categorySelect.value = '';
+        productSelect.value = '';
+
+        if (selectedType === 'category') {
+            categoryField.style.display = 'block';
+            categorySelect.setAttribute('required', 'required');
         }
 
-        // Initial call to set correct visibility on page load
-        toggleOfferTypeFields();
+        else if (selectedType === 'product') {
+            productField.style.display = 'block';
+            productSelect.setAttribute('required', 'required');
+        }
+    }
 
-        // Add event listener for changes to the offer type select
-        offerTypeSelect.addEventListener('change', toggleOfferTypeFields);
-    });
+    function validateDiscountLimit() {
+
+        const type = discountType.value;
+        const value = parseFloat(discountValue.value);
+
+        if (type === 'percentage' && value > 90) {
+
+            alert("Percentage discount cannot exceed 100%");
+            discountValue.value = 100;
+        }
+
+        if (value <= 0) {
+
+            alert("Discount must be greater than 0");
+            discountValue.value = '';
+        }
+    }
+
+    toggleOfferTypeFields();
+
+    offerTypeSelect.addEventListener('change', toggleOfferTypeFields);
+
+    discountValue.addEventListener('input', validateDiscountLimit);
+
+});
 </script>
 {% endblock %}

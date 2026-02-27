@@ -334,7 +334,23 @@
     </ul>
   </div>
 </li>
+<li class="nav-item">
+  <a class="nav-link" data-bs-toggle="collapse" href="#stock_management" aria-expanded="false" aria-controls="stock_management">
+    <span class="menu-title">Stock Management</span>
+    <i class="menu-arrow"></i>
+    <i class="mdi mdi-warehouse menu-icon"></i>
+  </a>
+  <div class="collapse" id="stock_management">
+    <ul class="nav flex-column sub-menu">
 
+      <li class="nav-item">
+        <a class="nav-link" href="{% url 'stock_list' %}">Stock List</a>
+      </li>
+
+      
+    </ul>
+  </div>
+</li>
 <li class="nav-item">
   <a class="nav-link" data-bs-toggle="collapse" href="#walletManagement" aria-expanded="false" aria-controls="walletManagement">
     <span class="menu-title">Wallet Management</span>

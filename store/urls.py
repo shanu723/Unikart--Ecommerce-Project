@@ -76,6 +76,9 @@ urlpatterns = [
     path('order/<int:order_id>/', views.order_detail, name='order_detail'),
     path('return-requests/', views.return_requests, name='return_requests'),
     path('return-requests/<int:request_id>/<str:action>/', views.update_return_status, name='update_return_status'),
+    path('stock_list/', views.stock_list, name='stock_list'),
+    
+    
     path('wallet/',views.wallet_view,name='wallet'),
     path('add_money_to_wallet',views.add_money_to_wallet,name='add_money_to_wallet'),
     path('admin_wallet_transactions',views.admin_wallet_transactions,name='admin_wallet_transactions'),

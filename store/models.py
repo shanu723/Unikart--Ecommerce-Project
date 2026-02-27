@@ -245,7 +245,7 @@ class ReturnRequest(models.Model):
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    size = models.CharField(max_length=20, blank=True, null=True)
+    variation = models.ForeignKey(Variation,on_delete=models.CASCADE,null=True,blank=True)
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
 

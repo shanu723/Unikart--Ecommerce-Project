@@ -867,7 +867,11 @@ def delete_offer(request,id):
 @login_required(login_url='login')
 def add_to_cart(request, product_id, size):
     product = get_object_or_404(Product, id=product_id)
-    variation = get_object_or_404(Variation, product=product, size=size)
+    variation = get_object_or_404(Variation, product=product, size=size,status =True)
+    
+    if variation.stock <=0:
+        messages.error(request,"This is out of stock")
+        return redirect('product_details',product_id=product.id)
     cart_item, created = CartItem.objects.get_or_create(
         user=request.user,
         product=product,
@@ -876,6 +880,9 @@ def add_to_cart(request, product_id, size):
     )
 
     if not created:
+        if cart_item >= variation.stock:
+            messages.error(request,"No more stock avilable")
+            return redirect('cart')
         cart_item.quantity += 1
         cart_item.save()
     Wishlist.objects.filter(user=request.user,product = product).delete()
@@ -1044,7 +1051,29 @@ def apply_coupon(request):
     return redirect('checkout')
 
 
- 
+@login_required
+def stock_list(request):
+    stock_items = Variation.objects.select_related('product').order_by('-created_at')
+
+    search = request.GET.get('search','')
+    if search:
+        stock_items = stock_items.filter(product__name__icontains=search)
+        
+    stock_filter = request.GET.get('filter','')
+    if stock_filter == 'low':
+        stock_items = stock_items.filter(stock__gte=0,stock__lte=5)
+    elif stock_filter == 'zero':
+        stock_items = stock_items.filter(stock=0)
+    paginator = Paginator(stock_items,10)
+    page_number = request.GET.get('page')
+    stock_items = paginator.get_page(page_number)
+
+    context = {'stock_items':stock_items,'search':search,'filter':stock_filter} 
+    return render(request,'admin_templates/stock_list.html',context)   
+
+
+    
+
 @login_required
 def wishlist(request):
     return render(request,'user/wishlist.html')

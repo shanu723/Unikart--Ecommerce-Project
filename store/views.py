@@ -875,12 +875,12 @@ def add_to_cart(request, product_id, size):
     cart_item, created = CartItem.objects.get_or_create(
         user=request.user,
         product=product,
-        size=size,
+        variation=variation,
         defaults={'quantity': 1, 'unit_price': get_best_price(variation)[0]}
     )
 
     if not created:
-        if cart_item >= variation.stock:
+        if cart_item.quantity >= variation.stock:
             messages.error(request,"No more stock avilable")
             return redirect('cart')
         cart_item.quantity += 1
@@ -898,7 +898,7 @@ def cart(request):
     
     for item in items:
         try:
-            variation = Variation.objects.get(product=item.product, size=item.size)
+            variation = item.variation
             item.unit_price, _ = get_best_price(variation)  
         except Variation.DoesNotExist:
             item.unit_price = 0
@@ -911,37 +911,33 @@ def cart(request):
     return render(request, 'cart.html', context)
 
 
-
+MAX_CART_ITRM_LIMIT=5
 @login_required(login_url='login')
 def update_cart_item(request):
-    if request.method == 'POST':
-        import json
+    if request.method != 'POST':
+        return JsonResponse({'error':'Invalid request method'},status=400)
+    try:
         data = json.loads(request.body)
-        item_id = data.get('id')
-        quantity = max(1, int(data.get('quantity', 1)))
+        item_id =data.get('id')
+        requested_quantity = max(1,int(data.get('quantity',1)))
+        cart_item = get_object_or_404(CartItem,id=item_id,user=request.user)
+        variation = cart_item.variation
 
-        item = get_object_or_404(CartItem, id=item_id, user=request.user)
-        item.quantity = quantity
-        item.save()
+        if requested_quantity >MAX_CART_ITRM_LIMIT:
+            return JsonResponse({'error':f"Maximum {MAX_CART_ITRM_LIMIT} items allowed"},status=400)
+        if requested_quantity >variation.stock:
+            return JsonResponse({'error':f'Only {variation.stock} itmes avilable'},status=400)
+        unit_price,_=get_best_price(variation)
 
-    
-        try:
-            variation = Variation.objects.get(product=item.product, size=item.size)
-            unit_price, _ = get_best_price(variation)
-        except Variation.DoesNotExist:
-            unit_price = 0
+        cart_item.quantity = requested_quantity
+        cart_item.unit_price = unit_price
+        cart_item.save()
 
-        line_total = float(unit_price * item.quantity)
+        return JsonResponse({ 'item':{'id':cart_item.id,'quantity':cart_item.quantity,'line_total':float(unit_price*cart_item.quantity)}})
+    except Exception as e:
+        return JsonResponse({'error':str(e)},status=400)          
 
-        return JsonResponse({
-            'item': {
-                'id': item.id,
-                'quantity': item.quantity,
-                'line_total': line_total,
-            }
-        })
 
-    return JsonResponse({'error': 'Invalid method'}, status=400)
 
 
 @login_required(login_url='login')
@@ -1089,7 +1085,7 @@ def buy_now(request, product_id, size):
     cart_item = CartItem.objects.create(
         user=request.user,
         product=product,
-        size=size,
+        variation=variation,
         quantity=1,
         unit_price=final_price
     )
@@ -1619,17 +1615,20 @@ def remove_wishlist(request,id):
 @never_cache
 def check_out(request):
     user = request.user
-
-    buy_now_item_id = request.session.get('buy_now_item')
-
     if request.GET.get('buy_now_item'):
         buy_now_item_id = request.GET.get('buy_now_item')
         request.session['buy_now_item'] = buy_now_item_id
-
-    if buy_now_item_id:
         selected_ids = [buy_now_item_id]
+
+    
     elif request.method == "POST":
         selected_ids = request.POST.getlist('selected_items[]')
+
+        if 'buy_now_item' in request.session:
+            del request.session['buy_now_item']
+
+    elif request.session.get('buy_now_item'):
+        selected_ids = [request.session.get('buy_now_item')]        
     else:
         selected_ids = list(
             CartItem.objects.filter(user=user).values_list('id', flat=True)
@@ -1777,7 +1776,7 @@ def payment_success(request):
 
 def finalize_order(order,cart_items):
     for item in cart_items:
-        variation = item.product.variation_set.filter(size=item.size).first()
+        variation = item.variation
         if variation:
             price,_=get_best_price(variation)
 
@@ -1897,6 +1896,8 @@ def place_orders(request):
 
             wallet.balance -= total
             wallet.save()
+
+            WalletTransaction.objects.create(user=request.user,wallet = wallet,transaction_type='debit',source='order_payment',amount=order.total)
 
             order.payment_method = "Wallet"
             order.status = "Processing"

@@ -14,7 +14,8 @@
         {% if order.address %}
         <div class="text-start mb-4">
             <h4><i class="fas fa-map-marker-alt text-danger"></i> Delivery Address</h4>
-            <p class="mb-1"><strong>{{ order.address.user.get_full_name|default:order.address.user.username }}</strong></p>
+            <p class="mb-1"><strong>{{ order.address.user.get_full_name|default:order.address.user.username }}</strong>
+            </p>
             <p class="mb-1">{{ order.address.street }}</p>
             <p class="mb-1">{{ order.address.city }}, {{ order.address.district }}</p>
             <p class="mb-1">{{ order.address.state }} - {{ order.address.pincode }}</p>
@@ -44,10 +45,11 @@
             </tbody>
         </table>
 
-       
+
 
         <div class="mt-4">
-            <a href="{% url 'download_invoice_pdf' order.id %}" class="btn btn-outline-primary">
+            <a href="{% url 'download_invoice_pdf' order.id %}" class="btn btn-outline-primary" target="blank"
+                rel="noopener noreferrer">
                 <i class="fas fa-download"></i> Download Invoice (PDF)
             </a>
             <a href="{% url 'shop' %}" class="btn btn-success ms-2">Continue Shopping</a>

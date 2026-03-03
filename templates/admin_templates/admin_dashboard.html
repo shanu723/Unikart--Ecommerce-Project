@@ -400,19 +400,93 @@
               </nav>
             </div>
            <div class="row">
-  <!-- Total Sales -->
-  <div class="col-md-3 stretch-card grid-margin">
-    <div class="card bg-gradient-danger card-img-holder text-white">
+            <div class="row mt-4">
+
+  <!-- Top 10 Products -->
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card">
       <div class="card-body">
-        <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
-        <h4 class="font-weight-normal mb-3">Total Sales 
-          <i class="mdi mdi-currency-inr mdi-24px float-end"></i>
-        </h4>
-        <h2 class="mb-5">₹ {{ total_sales }}</h2>
-        <h6 class="card-text">Overall revenue generated</h6>
+        <h4 class="card-title">Top 10 Products</h4>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Product Name</th>
+                <th>Quantity Sold</th>
+                <th>Total Revenue (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for product in top_products %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ product.product.name }}</td>
+                <td>{{ product.total_quantity_sold }}</td>
+                <td>{{ product.total_revenue|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center">No products sold yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- Top 10 Categories -->
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card">
+      <div class="card-body">
+        <h4 class="card-title">Top 10 Categories</h4>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Category Name</th>
+                <th>Quantity Sold</th>
+                <th>Total Revenue (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for category in top_categories %}
+              <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ category.category.name }}</td>
+                <td>{{ category.total_quantity_sold }}</td>
+                <td>{{ category.total_revenue|floatformat:2 }}</td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-center">No sales yet.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+  <!-- Total Sales -->
+  <div class="col-md-3 stretch-card grid-margin">
+  <div class="card bg-gradient-danger card-img-holder text-white">
+    <div class="card-body">
+      <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
+      <h4 class="font-weight-normal mb-3">
+        Total Sales
+        <i class="mdi mdi-currency-inr mdi-24px float-end"></i>
+      </h4>
+      <h2 class="mb-5">₹ {{ total_sales|floatformat:2 }}</h2>
+      <h6 class="card-text">Overall revenue generated</h6>
+    </div>
+  </div>
+</div>
 
   <!-- Total Orders -->
   <div class="col-md-3 stretch-card grid-margin">
@@ -443,20 +517,19 @@
   </div>
 
   <!-- Total Coupons Used -->
-  <div class="col-md-3 stretch-card grid-margin">
-    <div class="card bg-gradient-warning card-img-holder text-white">
-      <div class="card-body">
-        <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
-        <h4 class="font-weight-normal mb-3">Total Coupons Used
-          <i class="mdi mdi-ticket-percent mdi-24px float-end"></i>
-        </h4>
-        <h2 class="mb-5">{{ total_coupons_used }}</h2>
-        <h6 class="card-text">Coupons applied by customers</h6>
-      </div>
+ <div class="col-md-3 stretch-card grid-margin">
+  <div class="card bg-gradient-warning card-img-holder text-white">
+    <div class="card-body">
+      <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
+      <h4 class="font-weight-normal mb-3">
+        Total Coupons Used
+        <i class="mdi mdi-ticket-percent mdi-24px float-end"></i>
+      </h4>
+      <h2 class="mb-5">{{ total_coupons_used|default:0 }}</h2>
+      <h6 class="card-text">Coupons applied by customers</h6>
     </div>
   </div>
 </div>
-
 
           <!-- partial:partials/_footer.html -->
           <footer class="footer">

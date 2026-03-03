@@ -19,7 +19,7 @@ from django.db import transaction
 from django.db.models import Min,Max,Sum,Prefetch
 from django.contrib import messages
 from datetime import timedelta
-from .models import Product, Variation, Highlight, ProductImages,UserOTP,Category,Offer,UserProfile,Address,Order,CartItem,Order,Wallet,Wishlist,Coupon,OrderItem,ReturnRequest,WalletTransaction,CouponUsage
+from .models import *
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse,HttpResponse
 import json
@@ -35,7 +35,7 @@ from .forms import CouponForm
 from decimal import Decimal
 from django.views.decorators.csrf import csrf_exempt
 
-from store.utils import get_best_price
+from store.utils import get_best_price,generate_daily_sales_report
 from xhtml2pdf import pisa
 
 
@@ -263,18 +263,27 @@ def unblock_user(request,user_id):
 
 
 @login_required
-@user_passes_test(lambda u:u.is_superuser)
+@user_passes_test(lambda u: u.is_superuser)
 def admin_dashboard(request):
-    total_sales = Order.objects.filter(status='Deliverd').aggregate(Sum('total'))['total__sum'] or 0
+    generate_daily_sales_report()
+    total_sales = DailySalesReport.objects.aggregate(total_revenue=Sum('total_revenue'))['total_revenue'] or 0
     total_orders = Order.objects.count()
     total_customers = User.objects.count()
+    top_products = ProductSalesReport.objects.order_by('-total_quantity_sold')[:10]
+    top_categories = CategorySalesReport.objects.order_by('-total_revenue')[:10]
+    total_coupons_used = Order.objects.filter(discount__gt=0, status='Delivered').count()
+
+    
 
     context = {
-        'total_sales':total_sales,
-        'total_orders':total_orders,
-        'total_customers':total_customers,
+        'total_sales': total_sales,
+        'total_orders': total_orders,
+        'total_customers': total_customers,
+        'top_products': top_products,
+        'top_categories': top_categories,
+        'total_coupons_used': total_coupons_used,
     }
-    return render(request,'admin_templates/admin_dashboard.html',context)
+    return render(request, 'admin_templates/admin_dashboard.html', context)
 @login_required
 def category_list(request):
     categories=Category.objects.filter(status=True)
@@ -1914,7 +1923,7 @@ def place_orders(request):
         except Coupon.DoesNotExist:
             request.session.pop("coupon_id", None)
 
-        total = max(subtotal + shipping - discount, Decimal('0.00'))          
+    total = max(subtotal + shipping - discount, Decimal('0.00'))          
 
     order = Order.objects.create(
         user=user,
@@ -1961,7 +1970,7 @@ def place_orders(request):
         finalize_order(order, cart_items)
 
         if coupon:
-            CouponUsage.objects.create(use=request.user,coupon=coupon)
+            CouponUsage.objects.create(user=request.user,coupon=coupon)
             request.session.pop('coupon_id',None)
 
         request.session['order_id'] = order.id

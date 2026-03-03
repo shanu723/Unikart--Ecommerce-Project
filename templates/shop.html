@@ -279,15 +279,26 @@
 
                             {% for cat in categories %}
                             <div class="filter-checkbox">
-                                <input type="checkbox" name="category" value="{{ cat.id }}" 
-                                {% if cat.id|stringformat:"s" in selected_categories %} checked {% endif %}
-                                    onchange="document.getElementById('filterForm').submit()">
+                                <input type="checkbox" name="category" value="{{ cat.id }}"
+    {% if cat.id|stringformat:"s" in selected_categories %} checked {% endif %}>
                                 <label>{{ cat.name }}</label>
                             </div>
                             {% endfor %}
 
 
                         </div>
+                        <!-- Brand Filter -->
+<div class="filter-section">
+    <h5>Brand</h5>
+    {% for brand in brands %}
+    <div class="filter-checkbox">
+        <input type="checkbox" name="brand" value="{{ brand.id }}"
+        {% if brand.id|stringformat:"s" in selected_brands %} checked {% endif %}
+        onchange="document.getElementById('filterForm').submit()">
+        <label>{{ brand.name }}</label>
+    </div>
+    {% endfor %}
+</div>
 
 
 

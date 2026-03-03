@@ -657,67 +657,76 @@ def edit_product(request,product_id):
     return render(request, 'admin_templates/edit_product.html', context)
 
 @never_cache
-
 def shop(request):
     is_authenticated = request.user.is_authenticated
-    sort= request.GET.get('sort','newest')
+    sort = request.GET.get('sort','newest')
     query = request.GET.get('q')
-    categories = Category.objects.filter(status = True)
+
+    categories = Category.objects.filter(status=True)
+    brands = Variation.objects.filter(status=True)
     selected_categories = request.GET.getlist('category')
-   
+    selected_brands = request.GET.getlist('brand')
 
     products = Product.objects.filter(status=True)\
-    .annotate(min_var_price=Min('variation__original_price'))\
-    .prefetch_related(
-        Prefetch(
-            'productimages',
-            queryset=ProductImages.objects.filter(is_primary=True),
-            to_attr='primary_image_obj'
+        .annotate(min_var_price=Min('variation__original_price'))\
+        .prefetch_related(
+            Prefetch(
+                'productimages',
+                queryset=ProductImages.objects.filter(is_primary=True),
+                to_attr='primary_image_obj'
+            )
         )
-    )
+
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price and max_price:
         min_price = int(min_price)
         max_price = int(max_price)
+        products = products.filter(min_var_price__gte=min_price, min_var_price__lte=max_price)
+
     if selected_categories:
         products = products.filter(category__id__in=selected_categories)
 
-    if min_price and max_price:
-        products = products.filter(
-    min_var_price__gte=min_price,
-    min_var_price__lte=max_price)
+    if selected_brands:
+        products = products.filter(brand__id__in=selected_brands)
 
     if query:
         products = products.filter(name__icontains=query)
+
     if sort == 'low_to_high':
-        products =products.annotate(min_price=Min('variation__original_price')).order_by('min_price')
-    elif sort=='high_to_low':
-        products=products.annotate(min_price=Min('variation__original_price')).order_by('-min_price')
+        products = products.annotate(min_price=Min('variation__original_price')).order_by('min_price')
+    elif sort == 'high_to_low':
+        products = products.annotate(min_price=Min('variation__original_price')).order_by('-min_price')
     elif sort == 'a_to_z':
         products = products.order_by('name')
     elif sort == 'z_to_a':
-        products= products.order_by('-name')    
+        products = products.order_by('-name')
+    else:
+        products = products.order_by('-created_at')
 
-    else :
-        products=products.order_by('-created_at')
-
-    paginator =Paginator(products,9)
+    paginator = Paginator(products, 9)
     page_number = request.GET.get('page')
-    products = paginator.get_page(page_number)          
+    products = paginator.get_page(page_number)
 
     wishlist_product_ids = []
     if is_authenticated:
         wishlist_product_ids = list(Wishlist.objects.filter(user=request.user).values_list('product_id', flat=True))
 
-    context={
-        'products':products,
-        'is_authenticated':is_authenticated,
-        'current_sort':sort,
+    context = {
+        'products': products,
+        'is_authenticated': is_authenticated,
+        'current_sort': sort,
         'categories': categories,
+        'brands': brands,
+        'selected_categories': selected_categories,
+        'selected_brands': selected_brands,
         'wishlist_product_ids': wishlist_product_ids,
+        'min_price': min_price,
+        'max_price': max_price,
+        'query': query,
     }
-    return render(request,'shop.html',context)
+
+    return render(request, 'shop.html', context)
 @login_required    
 def products(request):
     products=Product.objects.all()
@@ -736,6 +745,10 @@ def product_details(request, id):
     variations = product.variation_set.all()
     product_images = product.productimages.all()
     highlights = product.highlights.all()
+
+    in_wishlist = False
+    if request.user.is_authenticated:
+        in_wishlist = Wishlist.objects.filter(user=request.user, product=product).exists()
     
     for variation in variations:
         variation.final_price, variation.discount_percentage = get_best_price(variation)
@@ -767,6 +780,7 @@ def product_details(request, id):
         "related_products": related_products,
         "highlights": highlights,
         "total_stock": total_stock,
+        "in_wishlist": in_wishlist,
     }
 
     return render(request, "product_details.html", context)
@@ -1144,7 +1158,6 @@ def profile_view(request):
 def update_profile(request):
     user = request.user
     profile = user.profile
-
     is_google_user = user.social_auth.filter(provider='google-oauth2').exists()
 
     if request.method == 'POST':
@@ -1153,16 +1166,15 @@ def update_profile(request):
         phone = request.POST.get('phone', '').strip()
         photo = request.FILES.get('profile_photo')
 
-        # Username validation
-        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9_]{3,20}$', new_username):
-            messages.error(request, "Username must be 3-20 chars, letters/numbers/underscore only.")
-            return redirect('profile')
-        if User.objects.exclude(id=user.id).filter(username=new_username).exists():
-            messages.error(request, "Username already taken.")
-            return redirect('profile')
-        user.username = new_username
+        if new_username != user.username:
+            if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9_]{3,20}$', new_username):
+                messages.error(request, "Username must be 3-20 chars, letters/numbers/underscore only.")
+                return redirect('profile')
+            if User.objects.exclude(id=user.id).filter(username=new_username).exists():
+                messages.error(request, "Username already taken.")
+                return redirect('profile')
+            user.username = new_username
 
-        # Email validation
         if new_email != user.email:
             if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', new_email):
                 messages.error(request, "Enter a valid email.")
@@ -1185,20 +1197,20 @@ def update_profile(request):
             messages.success(request, "OTP sent to new email")
             return redirect('verify_update_otp')
 
-        # Phone validation
-        if phone:
-            if not re.match(r'^[0-9]{10}$', phone):
+        if phone and phone != profile.phone:
+            cleaned_phone = re.sub(r'\D', '', phone)
+            if len(cleaned_phone) != 10:
                 messages.error(request, "Enter a valid 10-digit phone number.")
                 return redirect('profile')
-            profile.phone = phone
+            profile.phone = cleaned_phone
+
         if photo:
             profile.profile_photo = photo
+
         profile.save()
         user.save()
-
         messages.success(request, "Profile updated successfully.")
         return redirect('profile')
-
 
 
 @login_required
@@ -1609,8 +1621,7 @@ def update_order_status(request, order_id):
 
         return redirect(request.META.get('HTTP_REFERER', 'user/order_list'))
       
-def download_invoice_pdf(request, order_id):
-    pass
+
 @login_required
 def add_to_wishlist(request, product_id):
     product = get_object_or_404(Product, id=product_id)
@@ -2151,48 +2162,56 @@ def download_sales_pdf(request):
     filter_type = request.GET.get('filter_type')
 
     orders = Order.objects.all()
+    today = timezone.now().date()
 
-    if filter_type == 'day':
-        orders = orders.filter(created_at__date=timezone.now().date())
-    elif filter_type == 'week':
-        start_week = timezone.now() - timedelta(days=7)
-        orders = orders.filter(created_at__gte=start_week)
-    elif filter_type == 'month':
-        start_month = timezone.now().replace(day=1)
-        orders = orders.filter(created_at__gte=start_month)
+    # Filter by type
+    if filter_type == 'daily':
+        orders = orders.filter(created_at__date=today)
+    elif filter_type == 'weekly':
+        start_week = today - timedelta(days=7)
+        orders = orders.filter(created_at__date__gte=start_week)
+    elif filter_type == 'monthly':
+        start_month = today.replace(day=1)
+        orders = orders.filter(created_at__date__gte=start_month)
     elif start_date and end_date:
-        start_date = datetime.strptime(start_date,"%Y-%m-%d")
-        end_date = datetime.strptime(end_date,"%Y-%m-%d")
-        orders = orders.filter(created_at__range=[start_date,end_date])
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
+        # Make end_date inclusive
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
+        orders = orders.filter(created_at__range=[start_date_obj, end_date_obj])
 
+    # Create PDF response
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment;filename ="sales_report.pdf"'
+    response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
 
-    doc = SimpleDocTemplate(response,pagesize=A4)
+    doc = SimpleDocTemplate(response, pagesize=A4)
     styles = getSampleStyleSheet()
     elements = []
 
-    elements.append(Paragraph("Sales Report",styles['Title']))
+    elements.append(Paragraph("Sales Report", styles['Title']))
 
-    data = [["Order ID","Customer","Total Amount","Discount","Date"]]
+    # Table headers
+    data = [["Order ID", "Customer", "Total Amount", "Discount", "Date"]]
+
+    # Table rows
     for order in orders:
         data.append([
             str(order.id),
             str(order.user.username),
             f"₹{order.total}",
-            f"₹{order.discount or 0} ",
+            f"₹{order.discount or 0}",
             order.created_at.strftime("%Y-%m-%d")
         ])
 
     table = Table(data)
     table.setStyle(TableStyle([
-        ('BACKGROUND',(0,0),(-1,0),colors.lightblue),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
     ]))
     elements.append(table)
+
     doc.build(elements)
     return response
 
@@ -2203,24 +2222,31 @@ def download_sales_excel(request):
 
     orders = Order.objects.all()
 
-    if filter_type == 'day':
-        orders = orders.filter(created_at__date=timezone.now().date())
-    elif filter_type == 'week':
-        start_week = timezone.now() - timedelta(days=7)
-        orders = orders.filter(created_at__gte=start_week)
-    elif filter_type == 'month':
-        start_month = timezone.now().replace(day=1)
-        orders = orders.filter(created_at__gte=start_month)
+    # Correct filter type handling
+    today = timezone.now().date()
+    if filter_type == 'daily':
+        orders = orders.filter(created_at__date=today)
+    elif filter_type == 'weekly':
+        start_week = today - timedelta(days=7)
+        orders = orders.filter(created_at__date__gte=start_week)
+    elif filter_type == 'monthly':
+        start_month = today.replace(day=1)
+        orders = orders.filter(created_at__date__gte=start_month)
     elif start_date and end_date:
-        orders = orders.filter(created_at__range=[start_date,end_date])
+        start_date_obj = datetime.strptime(start_date,"%Y-%m-%d")
+        end_date_obj = datetime.strptime(end_date,"%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
+        orders = orders.filter(created_at__range=[start_date_obj, end_date_obj])
 
+    # Create workbook
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.title = "Sales Report"
 
+    # Headers
     headers = ["Order ID", "Customer", "Total Amount", "Discount", "Date"]
     worksheet.append(headers)
 
+    # Data rows
     for order in orders:
         worksheet.append([
             order.id,
@@ -2228,18 +2254,17 @@ def download_sales_excel(request):
             order.total,
             order.discount or 0,
             order.created_at.strftime('%Y-%m-%d')
+        ])
 
-        ])                        
-    for i,column in enumerate(headers,1):
+    # Adjust column widths
+    for i, column in enumerate(headers, 1):
         column_letter = get_column_letter(i)
-        worksheet.column_dimensions[column_letter].width=20
+        worksheet.column_dimensions[column_letter].width = 20
 
-        response = HttpResponse(
-            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )    
-        response['Content-Disposition']= 'attachment; filename="sales_report.xlsx"'
-
-        workbook.save(response)
+    # Create response AFTER all data is written
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename="sales_report.xlsx"'
+    workbook.save(response)
     return response
-
-

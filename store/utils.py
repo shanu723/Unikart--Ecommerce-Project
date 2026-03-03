@@ -70,7 +70,6 @@ def generate_daily_sales_report(date=None):
     if not date:
         date = timezone.now().date()
     
-    # --- Daily Sales ---
     orders = Order.objects.filter(created_at__date=date, status='Delivered')
     total_orders = orders.count()
     total_products_sold = orders.aggregate(Sum('items__quantity'))['items__quantity__sum'] or 0
@@ -85,7 +84,7 @@ def generate_daily_sales_report(date=None):
         }
     )
 
-    # --- Product Sales ---
+  
     products = ProductSalesReport.objects.all()
     for ps in products:
         total_qty = OrderItem.objects.filter(product=ps.product, order__status='Delivered').aggregate(Sum('quantity'))['quantity__sum'] or 0
@@ -100,7 +99,7 @@ def generate_daily_sales_report(date=None):
             }
         )
 
-    # --- Category Sales ---
+   
     for category in Category.objects.all():
         CategorySalesReport.objects.get_or_create(category=category)
     for category_report in CategorySalesReport.objects.all():

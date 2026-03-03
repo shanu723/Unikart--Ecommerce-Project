@@ -43,7 +43,7 @@ class OrderItemAdmin(admin.ModelAdmin):
 
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
-    list_display = ("code", "discount_amount", "active", "valid_from", "valid_to")
+    list_display = ("code", "discount_type","discount_value","max_discount_amount", "active", "valid_from", "valid_to")
     search_fields = ("code",)
     list_filter = ("active",)
 

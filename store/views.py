@@ -31,10 +31,10 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-
+from .forms import CouponForm
 from decimal import Decimal
 from django.views.decorators.csrf import csrf_exempt
-from .forms import OfferForm
+
 from store.utils import get_best_price
 from xhtml2pdf import pisa
 
@@ -954,45 +954,38 @@ def coupon_list(request):
     return render (request,'admin_templates/coupon_list.html',{'coupons':coupons})
 @login_required
 def add_coupon(request):
-    if request.method =="POST":
-        code = request.POST.get('code')
-        discount_amount = request.POST.get('discount_amount')
-        valid_from = request.POST.get('valid_from')
-        valid_to = request.POST.get('valid_to')
-        active = request.POST.get('active')=='on'
+    if request.method == "POST":
+        form = CouponForm(request.POST)
 
-        if not code or not discount_amount:
-            messages.error(request,'Please fill all fields')
-            return redirect('add_coupon')
+        if form.is_valid():
+            form.save()
+            messages.success(request,"Coupon added successfully")
+            return redirect('coupon_list')
+        else:
+            messages.error(request,"Please correct he error below")
+    else:
+        form = CouponForm()
+    return render(request,'admin_templates/add_coupon.html',{'form':form})    
 
-        Coupon.objects.create(
-            code =code,
-            discount_amount = discount_amount,
-            valid_from = valid_from,
-            valid_to = valid_to,
-            active = active
-        )    
-
-        messages.success(request,"Coupon added successfully")
-        return redirect('coupon_list')
-
-    return render (request,'admin_templates/add_coupon.html')    
 @login_required
-def edit_coupon(request,id):
-    coupon = get_object_or_404(Coupon,id=id)
+def edit_coupon(request, id):
+    coupon = get_object_or_404(Coupon, id=id)
 
     if request.method == "POST":
-        coupon.code = request.POST.get('code')
-        coupon.discount_amount = request.POST.get('discount_amount')
-        coupon.valid_from = request.POST.get('valid_from')
-        coupon.valid_to = request.POST.get('valid_to')
-        coupon.active = request.POST.get('active') == 'on'
-        coupon.save()
-        messages.success(request, "Coupon updated successfully!")
-        return redirect('coupon_list')
+        form = CouponForm(request.POST, instance=coupon)
 
-    return render(request, 'admin_templates/edit_coupon.html', {'coupon': coupon})
-      
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Coupon updated successfully!")
+            return redirect('coupon_list')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = CouponForm(instance=coupon)
+
+    return render(request, 'admin_templates/edit_coupon.html', {
+        'form': form
+    })
 @login_required(login_url='login')
 def apply_coupon(request):
 
@@ -1649,33 +1642,30 @@ def check_out(request):
     available_coupons = Coupon.objects.filter(
         active=True,
         valid_from__lte=now
-    ).exclude(
-        couponusage__user=user
-    )
+    ).exclude(couponusage__user=user)
+
     if request.GET.get('buy_now_item'):
         buy_now_item_id = request.GET.get('buy_now_item')
         request.session['buy_now_item'] = buy_now_item_id
         selected_ids = [buy_now_item_id]
 
-    
     elif request.method == "POST":
         selected_ids = request.POST.getlist('selected_items[]')
-
         if 'buy_now_item' in request.session:
             del request.session['buy_now_item']
 
     elif request.session.get('buy_now_item'):
-        selected_ids = [request.session.get('buy_now_item')]        
+        selected_ids = [request.session.get('buy_now_item')]
+
     else:
         selected_ids = list(
             CartItem.objects.filter(user=user).values_list('id', flat=True)
         )
 
-    print("Selected items:", selected_ids)
-
-    if not selected_ids or len(selected_ids) == 0:
+    if not selected_ids:
         messages.error(request, "Please select at least one item to checkout.")
         return redirect('cart')
+
     items = CartItem.objects.filter(user=user, id__in=selected_ids)
 
     subtotal = sum(item.unit_price * item.quantity for item in items)
@@ -1684,11 +1674,26 @@ def check_out(request):
     coupon = None
 
     coupon_id = request.session.get('coupon_id')
-    coupon_cart_items = request.session.get('coupon_cart_items',[])
-    if coupon_id and set(map(str,selected_ids)) == set(coupon_cart_items):
+    coupon_cart_items = request.session.get('coupon_cart_items', [])
+
+    if coupon_id and set(map(str, selected_ids)) == set(coupon_cart_items):
         try:
-            coupon = Coupon.objects.get(id=coupon_id, active=True)
-            discount = coupon.discount_amount
+            coupon = Coupon.objects.get(
+                id=coupon_id,
+                active=True,
+                valid_from__lte=now
+            )
+
+            if coupon.valid_to and coupon.valid_to < now:
+                raise Coupon.DoesNotExist
+
+            discount = coupon.calculate_discount(subtotal)
+
+            if coupon.min_purchase_amount and subtotal < coupon.min_purchase_amount:
+                messages.error(request, "Minimum purchase amount not reached for this coupon.")
+                discount = 0
+                request.session.pop('coupon_id', None)
+
         except Coupon.DoesNotExist:
             discount = 0
             request.session.pop('coupon_id', None)
@@ -1880,11 +1885,36 @@ def place_orders(request):
     if coupon_id:
         try:
             coupon = Coupon.objects.get(id=coupon_id, active=True)
-            discount = coupon.discount_amount
-        except Coupon.DoesNotExist:
-            request.session.pop('coupon_id',None)
+            now = timezone.now()
 
-    total = subtotal + shipping - discount
+            if coupon.valid_from and coupon.valid_from > now:
+                messages.error(request, "Coupon is not active yet")
+                request.session.pop('coupon_id', None)
+                coupon = None
+            elif coupon.valid_to and coupon.valid_to < now:
+                messages.error(request, "Coupon has expired.")
+                request.session.pop("coupon_id", None)
+                coupon = None
+            elif coupon.min_purchase_amount and subtotal < coupon.min_purchase_amount:
+                messages.error(request, f"Minimum purchase of ₹{coupon.min_purchase_amount} required.")
+                request.session.pop("coupon_id", None)
+                coupon = None
+            else:
+                if coupon.discount_type == "flat":
+                    if coupon.discount_value > subtotal:
+                        messages.error(request, "Coupon value exceeds cart total.")
+                        request.session.pop("coupon_id", None)
+                        coupon = None
+                    else:
+                        discount = coupon.discount_value
+                elif coupon.discount_type == "percentage":
+                    discount = (subtotal * coupon.discount_value) / Decimal('100')
+                    if coupon.max_discount_amount:
+                        discount = min(discount, coupon.max_discount_amount)
+        except Coupon.DoesNotExist:
+            request.session.pop("coupon_id", None)
+
+        total = max(subtotal + shipping - discount, Decimal('0.00'))          
 
     order = Order.objects.create(
         user=user,

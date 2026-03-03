@@ -995,55 +995,84 @@ def edit_coupon(request,id):
       
 @login_required(login_url='login')
 def apply_coupon(request):
+
     if request.method == "POST":
 
+        # REMOVE COUPON
         if request.POST.get('remove_coupon'):
+
             request.session.pop("coupon_id", None)
+            request.session.pop("coupon_cart_items", None)
+
             messages.success(request, "Coupon removed successfully")
-            
+
             buy_now_item_id = request.session.get('buy_now_item')
             if buy_now_item_id:
                 return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
+
             return redirect('checkout')
 
+
+        # GET CODE
         code = request.POST.get("coupon_code")
+
         if not code:
             messages.error(request, "Please enter a coupon code")
-            buy_now_item_id = request.session.get('buy_now_item')
-            if buy_now_item_id:
-                return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
             return redirect('checkout')
 
+
         try:
+
             coupon = Coupon.objects.get(
                 code__iexact=code,
                 active=True,
                 valid_from__lte=timezone.now()
             )
 
-            if coupon.valid_to and coupon.valid_to.date() < timezone.now().date():
+
+            # CHECK EXPIRY
+            if coupon.valid_to and coupon.valid_to < timezone.now():
+
                 messages.error(request, "Coupon expired")
-                buy_now_item_id = request.session.get('buy_now_item')
-                if buy_now_item_id:
-                    return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
-                return redirect('checkout')
-          
-            if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
-                messages.error(request, "You have already used this coupon")
-                buy_now_item_id = request.session.get('buy_now_item')
-                if buy_now_item_id:
-                    return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
                 return redirect('checkout')
 
+
+            # CHECK ALREADY USED
+            if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
+
+                messages.error(request, "You have already used this coupon")
+                return redirect('checkout')
+
+
+            # ✅ GET SELECTED CART ITEMS
+            selected_items = request.POST.getlist('selected_items[]')
+
+
+            # BUY NOW CASE
+            buy_now_item_id = request.session.get('buy_now_item')
+
+            if buy_now_item_id:
+                selected_items = [str(buy_now_item_id)]
+
+
+            # ✅ STORE IN SESSION (CRITICAL FIX)
             request.session['coupon_id'] = coupon.id
+            request.session['coupon_cart_items'] = selected_items
+
+
             messages.success(request, f"Coupon '{coupon.code}' applied successfully")
 
+
         except Coupon.DoesNotExist:
+
             messages.error(request, "Invalid coupon code")
-    
+
+
     buy_now_item_id = request.session.get('buy_now_item')
+
     if buy_now_item_id:
         return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
+
     return redirect('checkout')
 
 
@@ -1615,6 +1644,14 @@ def remove_wishlist(request,id):
 @never_cache
 def check_out(request):
     user = request.user
+    now = timezone.now()
+
+    available_coupons = Coupon.objects.filter(
+        active=True,
+        valid_from__lte=now
+    ).exclude(
+        couponusage__user=user
+    )
     if request.GET.get('buy_now_item'):
         buy_now_item_id = request.GET.get('buy_now_item')
         request.session['buy_now_item'] = buy_now_item_id
@@ -1647,7 +1684,8 @@ def check_out(request):
     coupon = None
 
     coupon_id = request.session.get('coupon_id')
-    if coupon_id:
+    coupon_cart_items = request.session.get('coupon_cart_items',[])
+    if coupon_id and set(map(str,selected_ids)) == set(coupon_cart_items):
         try:
             coupon = Coupon.objects.get(id=coupon_id, active=True)
             discount = coupon.discount_amount
@@ -1673,6 +1711,7 @@ def check_out(request):
         'discount': discount,
         'total': total,
         'coupon': coupon,
+        'available_coupons': available_coupons,
         'user_addresses': user_addresses,
         'selected_addresses_id': selected_address_id
     }
@@ -1834,7 +1873,8 @@ def place_orders(request):
     subtotal = sum(item.unit_price * item.quantity for item in cart_items)
     shipping = 50 if subtotal > 500 else 0
 
-    discount = 0
+    discount = Decimal('0.00')
+    coupon = None
     coupon_id = request.session.get("coupon_id")
 
     if coupon_id:
@@ -1842,7 +1882,7 @@ def place_orders(request):
             coupon = Coupon.objects.get(id=coupon_id, active=True)
             discount = coupon.discount_amount
         except Coupon.DoesNotExist:
-            pass
+            request.session.pop('coupon_id',None)
 
     total = subtotal + shipping - discount
 
@@ -1870,6 +1910,10 @@ def place_orders(request):
 
             finalize_order(order, cart_items)
 
+            if coupon:
+                CouponUsage.objects.create(user=request.user,coupon=coupon)
+                request.session.pop('coupon_id',None)
+
             request.session['order_id'] = order.id
 
             return redirect('order_confirmation')
@@ -1885,6 +1929,10 @@ def place_orders(request):
         order.save()
 
         finalize_order(order, cart_items)
+
+        if coupon:
+            CouponUsage.objects.create(use=request.user,coupon=coupon)
+            request.session.pop('coupon_id',None)
 
         request.session['order_id'] = order.id
 
@@ -1904,6 +1952,10 @@ def place_orders(request):
             order.save()
 
             finalize_order(order, cart_items)
+
+            if coupon:
+                CouponUsage.objects.create(user=request.user,coupon=coupon)
+                request.session.pop('coupon_id',None)
 
             messages.success(request, "Payment successful using Wallet")
 

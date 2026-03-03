@@ -207,6 +207,17 @@ class Order(models.Model):
     ]
     user=models.ForeignKey(User,on_delete=models.CASCADE)
     address=models.ForeignKey(Address,on_delete=models.SET_NULL,null=True,blank=True)
+
+    customer_name = models.CharField(max_length=200,blank =True)
+    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length = 15,blank = True)
+
+    street = models.CharField(max_length=100,blank=True)
+    city = models.CharField(max_length=100,blank = True)
+    district = models.CharField(max_length=100,blank = True)
+    state = models.CharField(max_length = 100,blank = True)
+    pincode = models.CharField(max_length=6,blank = True)
+
     created_at=models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="Pending")
     subtotal = models.DecimalField(max_digits=10, decimal_places = 2, default=0)
@@ -339,4 +350,50 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_id} - {self.user.username}"
+
+
+class DailySalesReport(models.Model):
+    date = models.DateField(unique=True)
+
+    total_orders = models.PositiveIntegerField(default=0)
+    total_products_sold = models.PositiveIntegerField(default=0)
+    total_revenue = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date']    
+    def __str__(self):
+        return f"Sales Report - {self.date}"
+
+class ProductSalesReport(models.Model):
+    product = models.OneToOneField('Product',on_delete = models.CASCADE)
+    total_quantity_sold = models.PositiveIntegerField(default = 0)
+    total_revenue = models.DecimalField(max_digits=15,decimal_places=2,default=0)
+
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-total_quantity_sold']
+
+    def __str__(self):
+        return f"{self.product.name} - Sales Report"
+
+class CategorySalesReport(models.Model):
+    category = models.OneToOneField('Category',on_delete=models.CASCADE)
+
+    total_quantity_sold = models.PositiveIntegerField(default=0)
+    total_revenue = models.DecimalField(max_digits=15,decimal_places=2,default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-total_revenue']
+
+    def __str__(self):
+        return f"{self.category.name}-Sales Report"            
+
+
+
          

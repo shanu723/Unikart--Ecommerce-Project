@@ -61,3 +61,18 @@ class WalletTransactionAdmin(admin.ModelAdmin):
         'amount',
         'created_at',
     )
+
+@admin.register(DailySalesReport)
+class DailySalesReportAdmin(admin.ModelAdmin):
+    list_display = ('date','total_orders','total_products_sold','total_revenue')
+    ordering = ['-date']
+
+@admin.register(ProductSalesReport)
+class ProductSalesReportAdmin(admin.ModelAdmin):
+    list_display = ('product','total_quantity_sold','total_revenue')
+    ordering = ['-total_quantity_sold']
+
+@admin.register(CategorySalesReport)
+class CategorySalesReportAdmin(admin.ModelAdmin):
+    list_display = ('category','total_quantity_sold','total_revenue')
+    ordering = ['-total_revenue']            

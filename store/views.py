@@ -663,7 +663,7 @@ def shop(request):
     query = request.GET.get('q')
 
     categories = Category.objects.filter(status=True)
-    brands = Variation.objects.filter(status=True)
+    brands = Product.objects.filter(status=True).exclude(brand__isnull=True).exclude(brand='').values_list('brand', flat=True).distinct()
     selected_categories = request.GET.getlist('category')
     selected_brands = request.GET.getlist('brand')
 
@@ -688,7 +688,7 @@ def shop(request):
         products = products.filter(category__id__in=selected_categories)
 
     if selected_brands:
-        products = products.filter(brand__id__in=selected_brands)
+        products = products.filter(brand__in=[b.strip() for b in selected_brands])
 
     if query:
         products = products.filter(name__icontains=query)

@@ -245,72 +245,65 @@
         <!-- Changed layout to row with left sidebar filter column -->
         <div class="row">
             <!-- Filter Sidebar Column - Left Side -->
-            <div class="col-lg-3">
-                <div class="filter-sidebar">
-                    <h4 style="margin-bottom: 20px; font-weight: 700;">Filters</h4>
+           <div class="col-lg-3">
+  <div class="filter-sidebar">
+    <h4 style="margin-bottom: 20px; font-weight: 700;">Filters</h4>
 
-                    <!-- Price Range Filter -->
-                    <form id="filterForm" method="get">
+    <form id="filterForm" method="get">
 
-                        <!-- Price Filter -->
-                        <div class="filter-section">
-                            <h5>Price Range</h5>
+     
 
-                            <input type="range" id="minPrice" name="min_price" min="20000" max="100000" step="100"
-                                value="{{ request.GET.min_price|default:'20000' }}"
-                                oninput="minPriceLabel.innerText=this.value">
+      <!-- Price Range Filter -->
+      <div class="filter-section">
+        <h5>Price Range</h5>
+        <input type="range" id="minPrice" name="min_price" min="20000" max="100000" step="100"
+          value="{{ min_price|default:'20000' }}">
+        <input type="range" id="maxPrice" name="max_price" min="20000" max="100000" step="100"
+          value="{{ max_price|default:'100000' }}">
 
-                            <input type="range" id="maxPrice" name="max_price" min="20000" max="100000" step="100"
-                                value="{{ request.GET.max_price|default:'20000' }}"
-                                oninput="maxPriceLabel.innerText=this.value">
+        <div class="price-range-display mt-2">
+          <span>₹<span id="minPriceLabel">{{ min_price|default:'20000' }}</span></span>
+          <span>₹<span id="maxPriceLabel">{{ max_price|default:'100000' }}</span></span>
+        </div>
+      </div>
 
-                            <div class="price-range-display">
-                                <span>₹<span id="minPriceLabel">{{ request.GET.min_price|default:'20000'}}</span></span>
-                                <span>₹<span id="maxPriceLabel">{{ request.GET.max_price|default:'100000' }}</span></span>
-                            </div>
+      <!-- Category Filter -->
+      <div class="filter-section mt-3">
+        <h5>Category</h5>
+        {% for cat in categories %}
+        <div class="filter-checkbox">
+          <input type="checkbox" name="category" value="{{ cat.id }}"
+            {% if cat.id|stringformat:"s" in selected_categories %} checked {% endif %}>
+          <label>{{ cat.name }}</label>
+        </div>
+        {% endfor %}
+      </div>
 
-                            <button type="submit" class="btn btn-sm btn-primary mt-2"
-                                style="width: 100%;">Apply</button>
-                        </div>
-
-                        <!-- Category Filter -->
-                        <div class="filter-section">
-                            <h5>Category</h5>
-
-                            {% for cat in categories %}
-                            <div class="filter-checkbox">
-                                <input type="checkbox" name="category" value="{{ cat.id }}"
-    {% if cat.id|stringformat:"s" in selected_categories %} checked {% endif %}>
-                                <label>{{ cat.name }}</label>
-                            </div>
-                            {% endfor %}
-
-
-                        </div>
-                        <!-- Brand Filter -->
-<div class="filter-section">
+      <!-- Brand Filter -->
+      <div class="filter-section mt-3">
     <h5>Brand</h5>
     {% for brand in brands %}
     <div class="filter-checkbox">
-        <input type="checkbox" name="brand" value="{{ brand.id }}"
-        {% if brand.id|stringformat:"s" in selected_brands %} checked {% endif %}
-        onchange="document.getElementById('filterForm').submit()">
-        <label>{{ brand.name }}</label>
+        <!-- Use brand value directly since it's a string -->
+        <input type="checkbox" name="brand" value="{{ brand }}"
+        {% if brand in selected_brands %} checked {% endif %}>
+        <label>{{ brand }}</label>
     </div>
     {% endfor %}
 </div>
+ <!-- Apply Button -->
+      <button type="submit" class="btn btn-sm btn-primary mb-3" style="width: 100%;">Apply Filters</button>
+      <!-- Reset Button -->
+      <button type="button" class="btn btn-secondary mt-3" style="width: 100%;"
+        onclick="window.location.href='{{ request.path }}'">
+        Reset All Filters
+      </button>
+
+    </form>
+  </div>
+</div>
 
 
-
-                        <!-- Reset Button -->
-                        <button type="button" class="reset-filter-btn" style="width:100%; margin-top:10px;"
-                            onclick="window.location.href='{{ request.path }}'">
-                            Reset All Filters
-                        </button>
-
-                    </form>
-                </div>
-            </div>
 
             <!-- Products Column - Right Side (9 columns, leaving 3 for filters) -->
             <div class="col-lg-9">
@@ -630,22 +623,15 @@
             })
             .catch(error => console.error('Error:', error));
     }
-    // Apply price filter
-    function applyPriceFilter() {
-        const minPrice = document.getElementById('minPrice').value;
-        const maxPrice = document.getElementById('maxPrice').value;
 
-        window.location.href = `?min_price=${minPrice}&max_price=${maxPrice}`;
-    }
+  // Update price labels dynamically
+  const minPriceInput = document.getElementById('minPrice');
+  const maxPriceInput = document.getElementById('maxPrice');
+  const minPriceLabel = document.getElementById('minPriceLabel');
+  const maxPriceLabel = document.getElementById('maxPriceLabel');
 
-    // Update range labels
-    document.getElementById('minPrice').addEventListener('input', function () {
-        document.getElementById('minPriceLabel').textContent = this.value;
-    });
-
-    document.getElementById('maxPrice').addEventListener('input', function () {
-        document.getElementById('maxPriceLabel').textContent = this.value;
-    });
+  minPriceInput.addEventListener('input', () => minPriceLabel.textContent = minPriceInput.value);
+  maxPriceInput.addEventListener('input', () => maxPriceLabel.textContent = maxPriceInput.value);
 
     // Reset filters
     function resetFilters() {

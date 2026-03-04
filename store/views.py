@@ -122,7 +122,7 @@ def signup_view(request):
 
         send_mail(
             subject='Verfication mail',
-            message=f"Hai {username}, This is your OTP{code} for signup Unikart ecommerce website .It wll expires in 10 minutes",
+            message=f"Hai {username}, This is your OTP {code} for signup Unikart ecommerce website .It wll expires in 10 minutes",
             from_email="no-repaly@gmail.com",
             recipient_list=[email],
             fail_silently=False,
@@ -156,13 +156,13 @@ def verify_otp(request, username):
     print("OTP TIME:", otp_time_obj)
     print("CURRENT TIME:", timezone.now())
 
-    if timezone.now() - otp_time_obj > timedelta(minutes=2):
+    if timezone.now() - otp_time_obj > timedelta(minutes=10):
         messages.error(request, "OTP expired. Please resend OTP.")
         return redirect('resend_otp', username=username)
 
     if request.method == 'POST':
 
-        entered_otp = request.POST.get('otp')
+        entered_otp = request.POST.get('otp', '').strip()
         print("ENTERED OTP:", entered_otp)
 
         if entered_otp == signup_otp:
@@ -742,6 +742,7 @@ def delete_product(request,product_id):
 @login_required
 def product_details(request, id):
     product = get_object_or_404(Product, id=id)
+    description = product.description
     variations = product.variation_set.all()
     product_images = product.productimages.all()
     highlights = product.highlights.all()
@@ -773,6 +774,7 @@ def product_details(request, id):
 
     context = {
         "product": product,
+        "description":description,
         "variations": variations,
         "product_images": product_images,
         "default_final_price": default_final_price,
@@ -1165,48 +1167,53 @@ def update_profile(request):
         new_email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
         photo = request.FILES.get('profile_photo')
+        if new_username:
+            new_username = new_username.strip()
+            if new_username != user.username:
+                if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9_]{3,20}$', new_username):
+                    messages.error(request, "Username must be 3-20 chars, letters/numbers/underscore only.")
+                    return redirect('profile')
+                if User.objects.exclude(id=user.id).filter(username=new_username).exists():
+                    messages.error(request, "Username already taken.")
+                    return redirect('profile')
+                user.username = new_username
+        if new_email:
+            new_email = new_email.strip()
 
-        if new_username != user.username:
-            if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9_]{3,20}$', new_username):
-                messages.error(request, "Username must be 3-20 chars, letters/numbers/underscore only.")
-                return redirect('profile')
-            if User.objects.exclude(id=user.id).filter(username=new_username).exists():
-                messages.error(request, "Username already taken.")
-                return redirect('profile')
-            user.username = new_username
+            if new_email != user.email:
+                if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', new_email):
+                    messages.error(request, "Enter a valid email.")
+                    return redirect('profile')
+                if is_google_user:
+                    messages.error(request, "Google users cannot change email.")
+                    return redirect('profile')
 
-        if new_email != user.email:
-            if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', new_email):
-                messages.error(request, "Enter a valid email.")
-                return redirect('profile')
-            if is_google_user:
-                messages.error(request, "Google users cannot change email.")
-                return redirect('profile')
+                otp = str(random.randint(100000, 999999))
+                request.session['update_email'] = new_email
+                request.session['update_otp'] = otp
+                request.session['update_otp_time'] = timezone.now().isoformat()
 
-            otp = str(random.randint(100000, 999999))
-            request.session['update_email'] = new_email
-            request.session['update_otp'] = otp
-            request.session['update_otp_time'] = timezone.now().isoformat()
+                send_mail(
+                    subject="Email verification",
+                    message=f"Your OTP is {otp}",
+                    from_email="no-reply@gmail.com",
+                    recipient_list=[new_email],
+                )
+                messages.success(request, "OTP sent to new email")
+                return redirect('verify_update_otp')
 
-            send_mail(
-                subject="Email verification",
-                message=f"Your OTP is {otp}",
-                from_email="no-reply@gmail.com",
-                recipient_list=[new_email],
-            )
-            messages.success(request, "OTP sent to new email")
-            return redirect('verify_update_otp')
-
-        if phone and phone != profile.phone:
-            cleaned_phone = re.sub(r'\D', '', phone)
-            if len(cleaned_phone) != 10:
-                messages.error(request, "Enter a valid 10-digit phone number.")
-                return redirect('profile')
-            profile.phone = cleaned_phone
+        if phone:        
+            phone = phone.strip()
+            if phone and phone != profile.phone:
+                cleaned_phone = re.sub(r'\D', '', phone)
+                if len(cleaned_phone) != 10:
+                    messages.error(request, "Enter a valid 10-digit phone number.")
+                    return redirect('profile')
+                profile.phone = cleaned_phone
 
         if photo:
             profile.profile_photo = photo
-
+        user.save()
         profile.save()
         user.save()
         messages.success(request, "Profile updated successfully.")

@@ -20,9 +20,9 @@
     <div class="col-md-4">
       <div class="card shadow-sm border-0 p-3 text-center">
         {% if user.profile.profile_photo %}
-          <img src="{{ user.profile.profile_photo.url }}" class="rounded-circle mb-3" alt="Profile Photo" width="120" height="120">
+         <img src="{{ user.profile.profile_photo.url }}"class="rounded-circle mb-3 mx-auto d-block"alt="Profile Photo"width="120" height="120">
         {% else %}
-          <img src="{{ MEDIA_URL }}profile_photos/default.jpg" class="rounded-circle mb-3" alt="Profile Photo" width="120" height="120">
+          <img src="{{ MEDIA_URL }}profile_photos/default.jpg" class="rounded-circle mb-3 mx-auto d-block" alt="Profile Photo" width="120" height="120">
         {% endif %}
 
         <h5 class="mb-1">{{ user.username }}</h5>

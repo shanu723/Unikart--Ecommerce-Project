@@ -95,6 +95,7 @@
             <span class="mdi mdi-menu"></span>
           </button>
           <div class="search-field d-none d-md-block">
+          <!----
             <form class="d-flex align-items-center h-100" action="#">
               <div class="input-group">
                 <div class="input-group-prepend bg-transparent">
@@ -102,7 +103,7 @@
                 </div>
                 <input type="text" class="form-control bg-transparent border-0" placeholder="Search projects">
               </div>
-            </form>
+            </form>-->
           </div>
           <ul class="navbar-nav navbar-nav-right">
             <li class="nav-item nav-profile dropdown">
@@ -123,7 +124,7 @@
 </a>
               </div>
             </li>
-            <li class="nav-item d-none d-lg-block full-screen-link">
+            <!--li class="nav-item d-none d-lg-block full-screen-link">
               <a class="nav-link">
                 <i class="mdi mdi-fullscreen" id="fullscreen-button"></i>
               </a>
@@ -133,6 +134,7 @@
                 <i class="mdi mdi-email-outline"></i>
                 <span class="count-symbol bg-warning"></span>
               </a>
+              <!----
               <div class="dropdown-menu dropdown-menu-end navbar-dropdown preview-list" aria-labelledby="messageDropdown">
                 <h6 class="p-3 mb-0">Messages</h6>
                 <div class="dropdown-divider"></div>
@@ -179,7 +181,7 @@
               <a class="nav-link" href="#">
                 <i class="mdi mdi-format-line-spacing"></i>
               </a>
-            </li>
+            </li-->
           </ul>
           <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas">
             <span class="mdi mdi-menu"></span>
@@ -225,10 +227,7 @@
                   <li class="nav-item">
                     <a class="nav-link" href="{% url 'add_product' %}">Add Product</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="{% url 'add_product' %}">Edit Product</a>
-                  </li>
-                  
+                 
                 </ul>
               </div>
             </li>
@@ -265,9 +264,7 @@
                   <li class="nav-item">
                     <a class="nav-link" href="{% url 'add_offer' %}">Add Offer</a>
                   </li>
-                  <li class="nav-item">
-                    <a class="nav-link" href="{% url 'add_product' %}">Edit Offer</a>
-                  </li>
+                 
                   
                 </ul>
               </div>
@@ -373,12 +370,7 @@
 </li>
 
 
-            <li class="nav-item">
-              <a class="nav-link" href="docs/documentation.html" target="_blank">
-                <span class="menu-title">Documentation</span>
-                <i class="mdi mdi-file-document-box menu-icon"></i>
-              </a>
-            </li>
+            
           </ul>
         </nav>
         {% block content %}
@@ -400,7 +392,65 @@
               </nav>
             </div>
            <div class="row">
-            <div class="row mt-4">
+            
+  <!-- Total Sales -->
+  <div class="col-md-3 stretch-card grid-margin">
+  <div class="card bg-gradient-danger card-img-holder text-white">
+    <div class="card-body">
+      <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
+      <h4 class="font-weight-normal mb-3">
+        Total Sales
+        <i class="mdi mdi-currency-inr mdi-24px float-end"></i>
+      </h4>
+      <h2 class="mb-5">₹ {{ total_sales|floatformat:2 }}</h2>
+      <h6 class="card-text">Overall revenue generated</h6>
+    </div>
+  </div>
+</div>
+
+  <!-- Total Orders -->
+  <div class="col-md-3 stretch-card grid-margin">
+    <div class="card bg-gradient-info card-img-holder text-white">
+      <div class="card-body">
+        <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
+        <h4 class="font-weight-normal mb-3">Total Orders 
+          <i class="mdi mdi-cart-outline mdi-24px float-end"></i>
+        </h4>
+        <h2 class="mb-5">{{ total_orders }}</h2>
+        <h6 class="card-text">Orders completed so far</h6>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Customers -->
+  <div class="col-md-3 stretch-card grid-margin">
+    <div class="card bg-gradient-success card-img-holder text-white">
+      <div class="card-body">
+        <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
+        <h4 class="font-weight-normal mb-3">Total Customers 
+          <i class="mdi mdi-account-multiple mdi-24px float-end"></i>
+        </h4>
+        <h2 class="mb-5">{{ total_customers }}</h2>
+        <h6 class="card-text">Registered users on platform</h6>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Coupons Used -->
+ <div class="col-md-3 stretch-card grid-margin">
+  <div class="card bg-gradient-warning card-img-holder text-white">
+    <div class="card-body">
+      <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
+      <h4 class="font-weight-normal mb-3">
+        Total Coupons Used
+        <i class="mdi mdi-ticket-percent mdi-24px float-end"></i>
+      </h4>
+      <h2 class="mb-5">{{ total_coupons_used|default:0 }}</h2>
+      <h6 class="card-text">Coupons applied by customers</h6>
+    </div>
+  </div>
+</div>
+<div class="row mt-4">
 
   <!-- Top 10 Products -->
   <div class="col-md-6 grid-margin stretch-card">
@@ -472,63 +522,6 @@
     </div>
   </div>
 
-</div>
-  <!-- Total Sales -->
-  <div class="col-md-3 stretch-card grid-margin">
-  <div class="card bg-gradient-danger card-img-holder text-white">
-    <div class="card-body">
-      <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
-      <h4 class="font-weight-normal mb-3">
-        Total Sales
-        <i class="mdi mdi-currency-inr mdi-24px float-end"></i>
-      </h4>
-      <h2 class="mb-5">₹ {{ total_sales|floatformat:2 }}</h2>
-      <h6 class="card-text">Overall revenue generated</h6>
-    </div>
-  </div>
-</div>
-
-  <!-- Total Orders -->
-  <div class="col-md-3 stretch-card grid-margin">
-    <div class="card bg-gradient-info card-img-holder text-white">
-      <div class="card-body">
-        <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
-        <h4 class="font-weight-normal mb-3">Total Orders 
-          <i class="mdi mdi-cart-outline mdi-24px float-end"></i>
-        </h4>
-        <h2 class="mb-5">{{ total_orders }}</h2>
-        <h6 class="card-text">Orders completed so far</h6>
-      </div>
-    </div>
-  </div>
-
-  <!-- Total Customers -->
-  <div class="col-md-3 stretch-card grid-margin">
-    <div class="card bg-gradient-success card-img-holder text-white">
-      <div class="card-body">
-        <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
-        <h4 class="font-weight-normal mb-3">Total Customers 
-          <i class="mdi mdi-account-multiple mdi-24px float-end"></i>
-        </h4>
-        <h2 class="mb-5">{{ total_customers }}</h2>
-        <h6 class="card-text">Registered users on platform</h6>
-      </div>
-    </div>
-  </div>
-
-  <!-- Total Coupons Used -->
- <div class="col-md-3 stretch-card grid-margin">
-  <div class="card bg-gradient-warning card-img-holder text-white">
-    <div class="card-body">
-      <img src="{% static 'admin_css/assets/images/dashboard/circle.svg' %}" class="card-img-absolute" alt="circle-image" />
-      <h4 class="font-weight-normal mb-3">
-        Total Coupons Used
-        <i class="mdi mdi-ticket-percent mdi-24px float-end"></i>
-      </h4>
-      <h2 class="mb-5">{{ total_coupons_used|default:0 }}</h2>
-      <h6 class="card-text">Coupons applied by customers</h6>
-    </div>
-  </div>
 </div>
 
           <!-- partial:partials/_footer.html -->

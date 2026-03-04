@@ -22,6 +22,22 @@
     <link rel="stylesheet" href="{% static 'assets/css/slick.css' %}">
     <link rel="stylesheet" href="{% static 'assets/css/nice-select.css' %}">
     <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+    <style>
+    .logo a {
+    font-size: 28px;       /* adjust size as needed */
+    font-weight: bold;     /* optional */
+    text-decoration: none; /* remove underline */
+    font-family: 'Arial', sans-serif; /* or your preferred font */
+}
+
+.logo-red {
+    color: red;            /* first three letters red */
+}
+
+.logo-black {
+    color: black;          /* remaining letters black */
+}
+</style>
 </head>
 
 <body>
@@ -56,15 +72,17 @@
             <div class="main-header header-sticky">
                 <div class="container-fluid">
                     <div class="menu-wrapper">
-                        <!-- Logo -->
-                        <div class="logo">
-                            <a href="{% url 'home' %}">unikart</a>
-                        </div>
+                      <!-- Logo -->
+<div class="logo">
+    <a href="{% url 'home' %}">
+        <span class="logo-red">Uni</span><span class="logo-black">kart</span>
+    </a>
+</div>
                         <!-- Main-menu -->
                         <div class="main-menu d-none d-lg-block">
                             <nav>                                                
                                 <ul id="navigation">  
-                                    <li><a href="{% url 'home' %}">Home</a></li>
+                                    <li><a href="{% if user.is_authenticated %}{% url 'user_dashboard' %}{% else %}{% url 'home' %}{% endif %}">Home</a></li>
                                     <li><a href="{% url 'shop' %}">shop</a></li>
                                     <li><a href="{% url 'about' %}">about</a></li>
                                     <!--li class="hot"><a href="#">Latest</a>
@@ -74,7 +92,7 @@
                                         </ul>
                                     </li-->
                                     
-                                    <li><a href="contact.html">Contact</a></li>
+                                    <li><a href="% url 'contact' %">Contact</a></li>
                                 </ul>
                             </nav>
                         </div>
@@ -152,7 +170,7 @@
             </div>
         </div>
         <!-- slider Area End-->
-        <!-- ? New Product Start -->
+        <!-- ? New Product Start --
        <section class="new-product-area section-padding30">
     <div class="container">
         <div class="row">
@@ -200,7 +218,7 @@
     </div>
 </section>
         <!--  New Product End -->
-        <!--? Gallery Area Start -->
+        <!--? Gallery Area Start --
         <div class="gallery-area">
             <div class="container-fluid p-0 fix">
                 <div class="row">
@@ -233,7 +251,7 @@
                 </div>
             </div>
         </div>
-        <!-- Gallery Area End -->
+         Gallery Area End -->
         <!--? Popular Items Start --
         <div class="popular-items section-padding30">
             <div class="container">
@@ -349,7 +367,7 @@
                         </div>
                     </div>
                 </div>
-                <!-- Button -->
+                <!-- Button --
                 <div class="row justify-content-center">
                     <div class="room-btn pt-70">
                         <a href="catagori.html" class="btn view-btn1">View More Products</a>
@@ -357,7 +375,7 @@
                 </div>
             </div>
         </div>
-        <!-- Popular Items End -->
+        <!-- Popular Items End --
         <!--? Video Area Start --
         <div class="video-area">
             <div class="container-fluid">
@@ -384,28 +402,28 @@
                 <div class="row align-items-center justify-content-between padding-130">
                     <div class="col-lg-5 col-md-6">
                         <div class="watch-details mb-40">
-                            <h2>Watch of Choice</h2>
+                            <h2>High Resolution TV</h2>
                             <p>Enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse.</p>
-                            <a href="shop.html" class="btn">Show Watches</a>
+                            <a href="{% url 'shop' %}" class="btn">Show</a>
                         </div>
                     </div>
                     <div class="col-lg-6 col-md-6 col-sm-10">
                         <div class="choice-watch-img mb-40">
-                            <img src="{% static 'assets/img/gallery/choce_watch1.png' %}" alt="">
+                            <img src="{% static 'assets/img/gallery/product1.png' %}" alt="">
                         </div>
                     </div>
                 </div>
                 <div class="row align-items-center justify-content-between">
                     <div class="col-lg-6 col-md-6 col-sm-10">
                         <div class="choice-watch-img mb-40">
-                            <img src="{% static 'assets/img/gallery/choce_watch2.png' %}" alt="">
+                            <img src="{% static 'assets/img/gallery/product2.png' %}" alt="">
                         </div>
                     </div>
                     <div class="col-lg-5 col-md-6">
                         <div class="watch-details mb-40">
-                            <h2>Watch of Choice</h2>
+                            <h2>Smart TV</h2>
                             <p>Enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse.</p>
-                            <a href="shop.html" class="btn">Show Watches</a>
+                            <a href="shop.html" class="btn">Show </a>
                         </div>
                     </div>
                 </div>
@@ -469,10 +487,9 @@
                             <div class="footer-tittle">
                                 <h4>Quick Links</h4>
                                 <ul>
-                                    <li><a href="#">About</a></li>
-                                    <li><a href="#"> Offers & Discounts</a></li>
-                                    <li><a href="#"> Get Coupon</a></li>
-                                    <li><a href="#">  Contact Us</a></li>
+                                    <li><a href="{% url 'about' %}">About</a></li>
+                                    
+                                    <li><a href="{% url 'contact' %}">  Contact Us</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -480,12 +497,10 @@
                     <div class="col-xl-3 col-lg-3 col-md-4 col-sm-7">
                         <div class="single-footer-caption mb-50">
                             <div class="footer-tittle">
-                                <h4>New Products</h4>
+                                <h4>Upcoming Products</h4>
                                 <ul>
-                                    <li><a href="#">Woman Cloth</a></li>
-                                    <li><a href="#">Fashion Accessories</a></li>
-                                    <li><a href="#"> Man Accessories</a></li>
-                                    <li><a href="#"> Rubber made Toys</a></li>
+                                    <li><a href="#">Accessories</a></li>
+                                    
                                 </ul>
                             </div>
                         </div>
@@ -495,10 +510,8 @@
                             <div class="footer-tittle">
                                 <h4>Support</h4>
                                 <ul>
-                                    <li><a href="#">Frequently Asked Questions</a></li>
-                                    <li><a href="#">Terms & Conditions</a></li>
-                                    <li><a href="#">Privacy Policy</a></li>
-                                    <li><a href="#">Report a Payment Issue</a></li>
+                                    <li>unikart@gmail.com</li>
+                                    
                                 </ul>
                             </div>
                         </div>

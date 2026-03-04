@@ -28,13 +28,16 @@
             <div class="main-header header-sticky">
                 <div class="container-fluid">
                     <div class="menu-wrapper">
-                        <!-- Logo -->
-                        <div class="logo"><a href="index.html">unikart</a></div>
+                       <div class="logo">
+    <a href="{% url 'home' %}">
+        <span class="logo-red">Uni</span><span class="logo-black">kart</span>
+    </a>
+</div>
                         <!-- Main-menu -->
                         <div class="main-menu d-none d-lg-block">
                             <nav>                                                
                                 <ul id="navigation">  
-                                    <li><a href="{% url 'user_dashboard' %}">Home</a></li>
+                                    <li><a href="{% if user.is_authenticated %}{% url 'user_dashboard' %}{% else %}{% url 'home' %}{% endif %}">Home</a></li>
                                     <li><a href="{% url 'shop' %}">shop</a></li>
                                     <li><a href="{% url 'about' %}">about</a></li>
                                     <!--li class="hot"><a href="#">Latest</a>

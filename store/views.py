@@ -137,9 +137,7 @@ def verify_otp(request, username):
     signup_data = request.session.get('signup_data')
     signup_otp = request.session.get('signup_otp')
     otp_time = request.session.get('signup_otp_time')
-
-    print("SESSION OTP:", signup_otp)
-
+  
     if not signup_data or not signup_otp or not otp_time:
         messages.error(request, "Session expired. Please signup again.")
         return redirect('signup')
@@ -152,9 +150,7 @@ def verify_otp(request, username):
 
     if timezone.is_naive(otp_time_obj):
         otp_time_obj = timezone.make_aware(otp_time_obj)
-
-    print("OTP TIME:", otp_time_obj)
-    print("CURRENT TIME:", timezone.now())
+  
 
     if timezone.now() - otp_time_obj > timedelta(minutes=10):
         messages.error(request, "OTP expired. Please resend OTP.")
@@ -163,11 +159,9 @@ def verify_otp(request, username):
     if request.method == 'POST':
 
         entered_otp = request.POST.get('otp', '').strip()
-        print("ENTERED OTP:", entered_otp)
-
+       
         if entered_otp == signup_otp:
-
-            print("OTP MATCHED — creating user")
+          
 
             user = User.objects.create_user(
                 username=signup_data['username'],
@@ -1015,82 +1009,51 @@ def edit_coupon(request, id):
 def apply_coupon(request):
 
     if request.method == "POST":
-
-        # REMOVE COUPON
+       
         if request.POST.get('remove_coupon'):
-
             request.session.pop("coupon_id", None)
             request.session.pop("coupon_cart_items", None)
-
             messages.success(request, "Coupon removed successfully")
-
             buy_now_item_id = request.session.get('buy_now_item')
             if buy_now_item_id:
                 return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
-
             return redirect('checkout')
-
-
-        # GET CODE
+       
         code = request.POST.get("coupon_code")
-
         if not code:
             messages.error(request, "Please enter a coupon code")
             return redirect('checkout')
-
-
         try:
-
             coupon = Coupon.objects.get(
                 code__iexact=code,
                 active=True,
                 valid_from__lte=timezone.now()
             )
-
-
-            # CHECK EXPIRY
+         
             if coupon.valid_to and coupon.valid_to < timezone.now():
 
                 messages.error(request, "Coupon expired")
                 return redirect('checkout')
-
-
-            # CHECK ALREADY USED
+           
             if CouponUsage.objects.filter(user=request.user, coupon=coupon).exists():
 
                 messages.error(request, "You have already used this coupon")
                 return redirect('checkout')
-
-
-            # ✅ GET SELECTED CART ITEMS
+           
             selected_items = request.POST.getlist('selected_items[]')
-
-
-            # BUY NOW CASE
+        
             buy_now_item_id = request.session.get('buy_now_item')
-
             if buy_now_item_id:
                 selected_items = [str(buy_now_item_id)]
-
-
-            # ✅ STORE IN SESSION (CRITICAL FIX)
+          
             request.session['coupon_id'] = coupon.id
             request.session['coupon_cart_items'] = selected_items
-
-
             messages.success(request, f"Coupon '{coupon.code}' applied successfully")
-
-
         except Coupon.DoesNotExist:
-
             messages.error(request, "Invalid coupon code")
-
-
     buy_now_item_id = request.session.get('buy_now_item')
-
     if buy_now_item_id:
         return redirect(f'/checkout/?buy_now_item={buy_now_item_id}')
-
     return redirect('checkout')
 
 
@@ -1399,29 +1362,22 @@ def send_email_otp(request):
 def verify_email_otp(request):
     otp = request.POST.get("otp")
     email = request.session.get("pending_email")
-
     if not email:
         return JsonResponse({"success": False, "message": "Session expired"})
-
     try:
         record = EmailOTP.objects.get(
             user=request.user,
             email=email,
             otp=otp
         )
-
         if record.is_expired():
             record.delete()
             return JsonResponse({"success": False, "message": "OTP expired"})
-
         request.user.email = email
         request.user.save()
-
         record.delete()
         del request.session["pending_email"]
-
         return JsonResponse({"success": True, "message": "Email verified"})
-
     except EmailOTP.DoesNotExist:
         return JsonResponse({"success": False, "message": "Invalid OTP"})
 
@@ -1613,9 +1569,7 @@ def update_order_status(request, order_id):
     if request.method == 'POST':
         order = get_object_or_404(Order, id=order_id)
         new_status = request.POST.get('status')
-
         allowed_next = ORDER_FLOW.get(order.status, [])
-
         if new_status in allowed_next:
             order.status = new_status
             order.save()  
@@ -1625,7 +1579,6 @@ def update_order_status(request, order_id):
                 request,
                 f"Cannot change status from '{order.status}' to '{new_status}'"
             )
-
         return redirect(request.META.get('HTTP_REFERER', 'user/order_list'))
       
 
@@ -1749,7 +1702,8 @@ def check_out(request):
     }
 
     return render(request, 'checkout.html', context)
-
+def custom_404(request, exception):
+    return render(request, '404.html', status=404)
 @csrf_exempt
 def create_order(request):
     if request.method == 'POST':
@@ -1764,17 +1718,7 @@ def create_order(request):
 
             if not cart_items.exists():
                 return JsonResponse({"error":"Cart is empty"},status = 400)
-
-            print("---- CART DEBUG ----")
-            print("Cart values:")
-            for item in cart_items:
-                print(
-                    "Product:", item.product.name,
-                    "| Unit Price:", item.unit_price,
-                    "| Quantity:", item.quantity,
-                    "| Total for this item:", item.unit_price * item.quantity
-                )
-            print("--------------------")    
+              
             total = sum(item.unit_price*item.quantity for item in cart_items)
             shipping = 50 if total>500 else 0
             coupon_id = request.session.get('coupon_id')
@@ -1789,7 +1733,7 @@ def create_order(request):
             amount = int(final_amount*100)
 
             client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-            print("Final price:", final_amount, "Amount in paisa:", amount)
+           
 
             payment = client.order.create({
                 "amount": amount,  
@@ -2171,7 +2115,7 @@ def download_sales_pdf(request):
     orders = Order.objects.all()
     today = timezone.now().date()
 
-    # Filter by type
+    
     if filter_type == 'daily':
         orders = orders.filter(created_at__date=today)
     elif filter_type == 'weekly':
@@ -2182,11 +2126,11 @@ def download_sales_pdf(request):
         orders = orders.filter(created_at__date__gte=start_month)
     elif start_date and end_date:
         start_date_obj = datetime.strptime(start_date, "%Y-%m-%d")
-        # Make end_date inclusive
+       
         end_date_obj = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
         orders = orders.filter(created_at__range=[start_date_obj, end_date_obj])
 
-    # Create PDF response
+    
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
 
@@ -2196,10 +2140,10 @@ def download_sales_pdf(request):
 
     elements.append(Paragraph("Sales Report", styles['Title']))
 
-    # Table headers
+    
     data = [["Order ID", "Customer", "Total Amount", "Discount", "Date"]]
 
-    # Table rows
+    
     for order in orders:
         data.append([
             str(order.id),
@@ -2229,7 +2173,7 @@ def download_sales_excel(request):
 
     orders = Order.objects.all()
 
-    # Correct filter type handling
+    
     today = timezone.now().date()
     if filter_type == 'daily':
         orders = orders.filter(created_at__date=today)
@@ -2244,16 +2188,16 @@ def download_sales_excel(request):
         end_date_obj = datetime.strptime(end_date,"%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
         orders = orders.filter(created_at__range=[start_date_obj, end_date_obj])
 
-    # Create workbook
+    
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
     worksheet.title = "Sales Report"
 
-    # Headers
+   
     headers = ["Order ID", "Customer", "Total Amount", "Discount", "Date"]
     worksheet.append(headers)
 
-    # Data rows
+    
     for order in orders:
         worksheet.append([
             order.id,
@@ -2263,12 +2207,12 @@ def download_sales_excel(request):
             order.created_at.strftime('%Y-%m-%d')
         ])
 
-    # Adjust column widths
+    
     for i, column in enumerate(headers, 1):
         column_letter = get_column_letter(i)
         worksheet.column_dimensions[column_letter].width = 20
 
-    # Create response AFTER all data is written
+   
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )

@@ -194,57 +194,58 @@
                     </div>
 
                     <!-- Coupon Section -->
-<div class="checkout-section mt-4" id="main-coupon-section">
-    <h3><i class="fas fa-tag"></i> Coupon Code</h3>
+                    <div class="checkout-section mt-4" id="main-coupon-section">
+                        <h3><i class="fas fa-tag"></i> Coupon Code</h3>
 
-    {% if coupon %}
-    <!-- Applied Coupon -->
-    <div class="coupon-section d-flex justify-content-between align-items-center">
-        <div>
-            <strong>Applied Coupon:</strong> {{ coupon.code }} <br>
-            <small>Discount: ₹{{ discount|floatformat:2 }}</small>
-        </div>
-        <form method="POST" action="{% url 'apply_coupon' %}" class="couponForm">
-            {% csrf_token %}
-            <input type="hidden" name="remove_coupon" value="1">
-            {% for item in items %}
-                <input type="hidden" name="selected_items[]" value="{{ item.id }}">
-            {% endfor %}
-            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
-        </form>
-    </div>
-    {% else %}
-    <!-- Apply Coupon Form -->
-    <form method="POST" action="{% url 'apply_coupon' %}" id="couponForm" class="row mt-3">
-        {% csrf_token %}
-        <div class="col-md-8">
-            <input type="text" name="coupon_code" class="form-control" placeholder="Enter coupon code" required>
-        </div>
-        {% for item in items %}
-            <input type="hidden" name="selected_items[]" value="{{ item.id }}">
-        {% endfor %}
-        <div class="col-md-4">
-            <button type="submit" class="btn btn-primary w-100">Apply Coupon</button>
-        </div>
-    </form>
-    {% endif %}
+                        {% if coupon %}
+                        <!-- Applied Coupon -->
+                        <div class="coupon-section d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Applied Coupon:</strong> {{ coupon.code }} <br>
+                                <small>Discount: ₹{{ discount|floatformat:2 }}</small>
+                            </div>
+                            <form method="POST" action="{% url 'apply_coupon' %}" class="couponForm">
+                                {% csrf_token %}
+                                <input type="hidden" name="remove_coupon" value="1">
+                                {% for item in items %}
+                                <input type="hidden" name="selected_items[]" value="{{ item.id }}">
+                                {% endfor %}
+                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <!-- Apply Coupon Form -->
+                        <form method="POST" action="{% url 'apply_coupon' %}" id="couponForm" class="row mt-3">
+                            {% csrf_token %}
+                            <div class="col-md-8">
+                                <input type="text" name="coupon_code" class="form-control"
+                                    placeholder="Enter coupon code" required>
+                            </div>
+                            {% for item in items %}
+                            <input type="hidden" name="selected_items[]" value="{{ item.id }}">
+                            {% endfor %}
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary w-100">Apply Coupon</button>
+                            </div>
+                        </form>
+                        {% endif %}
 
-    <!-- Available Coupons -->
-    {% if available_coupons %}
-    <div class="mt-3">
-        <small class="text-muted d-block mb-2">Available Coupons:</small>
-        <div class="d-flex flex-wrap gap-2">
-            {% for c in available_coupons %}
-            <span class="badge px-3 py-2"
-                  style="background-color: {% if c.valid_to and c.valid_to|timeuntil:'now' < '1 day' %}#dc3545{% else %}#ffc107{% endif %}; color:#000; font-size:13px; font-weight:600; border-radius:6px; cursor:pointer;"
-                  onclick="applyCouponCode('{{ c.code }}')">
-                {{ c.code }}
-            </span>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-</div>
+                        <!-- Available Coupons -->
+                        {% if available_coupons %}
+                        <div class="mt-3">
+                            <small class="text-muted d-block mb-2">Available Coupons:</small>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for c in available_coupons %}
+                                <span class="badge px-3 py-2"
+                                    style="background-color: {% if c.valid_to and c.valid_to|timeuntil:'now' < '1 day' %}#dc3545{% else %}#ffc107{% endif %}; color:#000; font-size:13px; font-weight:600; border-radius:6px; cursor:pointer;"
+                                    onclick="applyCouponCode('{{ c.code }}')">
+                                    {{ c.code }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
 
 
                     <!-- Payment Method Section -->
@@ -308,37 +309,39 @@
                             </div>
                             {% endfor %}
                         </div>
-<div class="price-breakdown">
-    <div class="price-row"><span>Subtotal:</span><span>₹{{ subtotal|floatformat:2 }}</span></div>
+                        <div class="price-breakdown">
+                            <div class="price-row"><span>Subtotal:</span><span>₹{{ subtotal|floatformat:2 }}</span>
+                            </div>
 
-    {% if discount > 0 and coupon %}
-    <div class="price-row text-success">
-        <span>Discount ({{ coupon.code }}):</span>
-        <span>-₹{{ discount|floatformat:2 }}</span>
-    </div>
-    {% endif %}
+                            {% if discount > 0 and coupon %}
+                            <div class="price-row text-success">
+                                <span>Discount ({{ coupon.code }}):</span>
+                                <span>-₹{{ discount|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
 
-    <div class="price-row"><span>Shipping:</span><span>₹{{ shipping|floatformat:2 }}</span></div>
-    <div class="price-row total">
-        <span>Total:</span>
-        <span>₹{{ total|floatformat:2 }}</span>
-    </div>
-</div>
+                            <div class="price-row"><span>Shipping:</span><span>₹{{ shipping|floatformat:2 }}</span>
+                            </div>
+                            <div class="price-row total">
+                                <span>Total:</span>
+                                <span>₹{{ total|floatformat:2 }}</span>
+                            </div>
+                        </div>
 
-<button type="button" id="placeOrderBtn" class="btn btn-success btn-lg btn-block mt-3">
-    Place Order - ₹{{ total|floatformat:2 }}
-</button>
-<div class="mt-3 text-center">
-    <small class="text-muted">
-        <i class="fas fa-shield-alt"></i> Your payment information is secure and encrypted
-    </small>
-</div>
+                        <button type="button" id="placeOrderBtn" class="btn btn-success btn-lg btn-block mt-3">
+                            Place Order - ₹{{ total|floatformat:2 }}
+                        </button>
+                        <div class="mt-3 text-center">
+                            <small class="text-muted">
+                                <i class="fas fa-shield-alt"></i> Your payment information is secure and encrypted
+                            </small>
+                        </div>
 
-            </div>
-            {% endif %}
-            ```
-            {% endblock %}
-        </div>
+                    </div>
+                    {% endif %}
+                    ```
+                    {% endblock %}
+                </div>
     </section>
 </main>
 
@@ -393,10 +396,9 @@
         });
 
         const placeOrderForm = document.getElementById("placeOrderForm");
-        const placeOrderBtn = document.getElementById("placeOrderBtn");
 
-        if (placeOrderBtn) {
-            placeOrderBtn.addEventListener("click", function (e) {
+        document.addEventListener("click", function (e) {
+            if (e.target && e.target.id === "placeOrderBtn") {
                 console.log("Place Order button clicked");
                 e.preventDefault();
                 console.log("Default prevented");
@@ -495,8 +497,8 @@
                     // For COD/Wallet, submit normally
                     placeOrderForm.submit();
                 }
-            });
-        }
+            } // end event target check
+        });
     });
 
 
@@ -597,18 +599,18 @@
         attachCouponListener();
     });
 
- function applyCouponCode(code) {
-    const couponForm = document.getElementById("couponForm");
-    if (!couponForm) return;
+    function applyCouponCode(code) {
+        const couponForm = document.getElementById("couponForm");
+        if (!couponForm) return;
 
-    const input = couponForm.querySelector('input[name="coupon_code"]');
-    if (!input) return;
+        const input = couponForm.querySelector('input[name="coupon_code"]');
+        if (!input) return;
 
-    input.value = code;
+        input.value = code;
 
-    // Dispatch submit event instead of normal form submit
-    couponForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-}
+        // Dispatch submit event instead of normal form submit
+        couponForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
 
 </script>
 

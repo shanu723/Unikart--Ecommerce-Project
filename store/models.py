@@ -229,11 +229,20 @@ class Order(models.Model):
         return f"Order{self.id} by {self.user.username}"
 
 class OrderItem(models.Model):
+    STATUS_CHOICES = [
+        ("Ordered","Ordered"),
+        ("Shipped","Shipped"),
+        ("Delivered","Delivered"),
+        ("Cancelled","Cancelled"),
+        ("Returned","Returned"),
+    ]
+
     order=models.ForeignKey(Order,related_name='items',on_delete=models.CASCADE)
     product=models.ForeignKey(Product,on_delete=models.CASCADE)
     variation = models.ForeignKey(Variation, on_delete=models.CASCADE, null=True, blank=True)
     quantity=models.PositiveIntegerField(default=1)
     price=models.DecimalField(max_digits=10,decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Ordered")
 
     def __str__(self):
         return f"{self.quantity}*{self.product.name}"
@@ -244,7 +253,7 @@ class ReturnRequest(models.Model):
         ('Accepted','Accepted'),
         ('Rejected','Rejected'),
     ]      
-    order = models.ForeignKey(Order,on_delete=models.CASCADE)
+    order = models.ForeignKey(OrderItem,on_delete=models.CASCADE)
     user = models.ForeignKey(User,on_delete=models.CASCADE)
     reason = models.TextField()
     status = models.CharField(max_length=10,choices=STATUS_CHOICES,default='Pending')
@@ -412,8 +421,42 @@ class CategorySalesReport(models.Model):
         ordering = ['-total_revenue']
 
     def __str__(self):
-        return f"{self.category.name}-Sales Report"            
+        return f"{self.category.name}-Sales Report"
+        
 
+class Payment(models.Model):
 
+    STATUS_CHOICES = [
+        ('Pending','Pending'),
+        ('Success','Success'),
+        ('Failed','Failed'),
+    ]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    payment_method = models.CharField(max_length=50)   
+    transaction_id = models.CharField(max_length=200, blank=True, null=True,unique=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"Payment {self.id} - Order {self.order.id}"
+
+class Refund(models.Model):
+
+    STATUS_CHOICES = [
+        ('Pending','Pending'),
+        ('Approved','Approved'),
+        ('Completed','Completed'),
+        ('Rejected','Rejected'),
+    ]
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name="refunds")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Refund for OrderItem {self.order_item.id}"        
 
          

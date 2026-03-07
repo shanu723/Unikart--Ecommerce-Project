@@ -63,6 +63,22 @@
     </div>
 
     <hr>
+    <!-- PAYMENT DETAILS -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <h6 class="fw-bold">Payment Details</h6>
+
+    {% if payment %}
+      <p class="mb-1"><strong>Method:</strong> {{ payment.payment_method }}</p>
+      <p class="mb-1"><strong>Status:</strong> {{ payment.status }}</p>
+      <p class="mb-1"><strong>Transaction ID:</strong> {{ payment.transaction_id }}</p>
+      <p class="mb-1"><strong>Amount Paid:</strong> ₹{{ payment.amount|floatformat:2 }}</p>
+    {% else %}
+      <p class="text-muted">Payment information not available</p>
+    {% endif %}
+
+  </div>
+</div>
 
     <!-- ORDER ITEMS -->
     <h6 class="fw-bold mb-3">Ordered Items</h6>
@@ -82,6 +98,25 @@
           <td>{{ item.quantity }}</td>
           <td class="text-end">₹{{ item.price|floatformat:2 }}</td>
           <td class="text-end">₹{% widthratio item.price 1 item.quantity %}</td>
+           <td class="text-center">
+
+    {% if order.status == "Delivered" %}
+        <a href="{% url 'return_item' item.id %}" class="btn btn-outline-warning btn-sm">
+            Return
+        </a>
+
+    {% elif order.status != "Cancelled" %}
+        <form action="{% url 'cancel_item' item.id %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm"
+                onclick="return confirm('Cancel this item?');">
+                Cancel
+            </button>
+        </form>
+    {% endif %}
+
+  </td>
+
         </tr>
         {% endfor %}
       </tbody>
@@ -116,19 +151,7 @@
         <i class="fas fa-arrow-left"></i> Back to Orders
       </a>
 
-      {% if order.status == "Delivered" %}
-      <a href="{% url 'return_order' order.id %}" class="btn btn-outline-danger btn-sm">
-        Return Order
-      </a>
-      {% elif order.status != "Cancelled" %}
-      <form action="{% url 'cancel_order' order.id %}" method="post" class="m-0 p-0 d-inline-block">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-outline-danger btn-sm m-0"
-          onclick="return confirm('Are you sure you want to cancel this order?');">
-          Cancel Order
-        </button>
-      </form>
-      {% endif %}
+      
     </div>
 
   </div>

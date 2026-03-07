@@ -76,3 +76,12 @@ class ProductSalesReportAdmin(admin.ModelAdmin):
 class CategorySalesReportAdmin(admin.ModelAdmin):
     list_display = ('category','total_quantity_sold','total_revenue')
     ordering = ['-total_revenue']            
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('order','status','payment_method')
+    ordering = ['-created_at']
+
+@admin.register(Refund)
+class RefundAdmin(admin.ModelAdmin):
+    list_display=('order_item','amount','reason')
+    ordering = ['-created_at']    

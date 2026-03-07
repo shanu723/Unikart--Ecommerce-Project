@@ -725,6 +725,15 @@ def shop(request):
 def products(request):
     products=Product.objects.all()
     return render(request,'admin_templates/products.html',{'products':products})    
+
+@login_required
+def cus_order_details(request,id):
+    order = Order.objects.get(id=id)
+    items = order.items.all()
+    context ={'order':order,'items':items}
+    return render(request,'admin_templates/cus_order_details.html',context)
+
+
 @login_required    
 def delete_product(request,product_id):
     product=get_object_or_404(Product,id=product_id)
@@ -905,6 +914,7 @@ def add_to_cart(request, product_id, size):
         cart_item.quantity += 1
         cart_item.save()
     Wishlist.objects.filter(user=request.user,product = product).delete()
+    print(product_id, size)
 
     messages.success(request,"Item moved to cart successfully")
     return redirect('cart')
@@ -1726,7 +1736,7 @@ def create_order(request):
             if coupon_id:
                 try :
                     coupon = Coupon.objects.get(id=coupon_id,active=True)
-                    discount = coupon.discount_amount
+                    discount = coupon.max_discount_amount
                 except Coupon.DoesNotExist:
                     discount = 0
             final_amount = total+shipping-discount
@@ -1979,7 +1989,7 @@ def place_orders(request):
     return redirect('checkout')
 
 
-csrf_exempt
+@csrf_exempt
 def razorpay_webhook(request):
 
     if request.method == "POST":
@@ -2035,7 +2045,7 @@ def download_invoice_pdf(request,order_id):
     html = template.render(context)
 
     response = HttpResponse(content_type='application/pdf')
-    response['Content Deisposition'] = f"attachment; filname ='invoice_{order.id}.pdf"
+    response['Content-Disposition'] = f"attachment; filname ='invoice_{order.id}.pdf"
 
     pisa_status = pisa.CreatePDF(html,dest=response)
 

@@ -18,7 +18,7 @@
                   <th>Payment Method</th>
                   <th>Total</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th>View</th>
                 </tr>
               </thead>
               <tbody>
@@ -41,6 +41,11 @@
                       <button type="submit" class="btn btn-sm btn-primary mt-2">Update</button>
                     </form>
                   </td>
+                 <td>
+<a href="{% url 'order_details' order.id %}" class="btn btn-sm btn-info">
+    <i class="fa fa-eye"></i>
+</a>
+</td>
                   
                 </tr>
                 {% empty %}

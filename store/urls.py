@@ -30,7 +30,7 @@ urlpatterns = [
     path('shop',views.shop,name='shop'),
     path('delete_product/<int:product_id>/',views.delete_product,name='delete_product'),
     path('product/<int:id>/',views.product_details,name='product'),
-    path('add_to_cart/<int:product_id>/<str:size>/', views.add_to_cart, name='add_to_cart'),
+    path('add_to_cart/<int:product_id>/<int:size>/', views.add_to_cart, name='add_to_cart'),
     path('about/', views.about, name='about'),
     path('contact/',views.contact,name='contact'),
     path('cart/', views.cart, name='cart'),
@@ -77,7 +77,7 @@ urlpatterns = [
     path('return-requests/', views.return_requests, name='return_requests'),
     path('return-requests/<int:request_id>/<str:action>/', views.update_return_status, name='update_return_status'),
     path('stock_list/', views.stock_list, name='stock_list'),
-    
+    path('cus_order_details/<int:id>/', views.cus_order_details, name='order_details'),
     
     path('wallet/',views.wallet_view,name='wallet'),
     path('add_money_to_wallet',views.add_money_to_wallet,name='add_money_to_wallet'),

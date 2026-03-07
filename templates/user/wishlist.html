@@ -54,6 +54,7 @@
     .action-icons a {
       margin-right: 10px;
     }
+
     .action-icons i {
       font-size: 1.2rem;
     }
@@ -65,78 +66,69 @@
     <h2 class="text-center mb-4">My Wishlist</h2>
 
     {% if wishlist_items %}
-      <div class="table-responsive">
-        <table class="table align-middle">
-          <tbody>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <tbody>
 
-            {% for item in wishlist_items %}
-            <tr class="border-bottom">
-              <td style="width: 120px;">
-                {% if item.product.productimages.all %}
-                  <img src="{{ item.product.productimages.first.product_image.url }}"
-                       alt="{{ item.product.name }}"
-                       class="img-fluid rounded shadow-sm"
-                       style="max-width: 100px;">
-                {% else %}
-                  <img src="{% static 'images/placeholder.png' %}"
-                       alt="No image"
-                       class="img-fluid rounded shadow-sm"
-                       style="max-width: 100px;">
-                {% endif %}
-              </td>
+          {% for item in wishlist_items %}
+          <tr class="border-bottom">
+            <td style="width: 120px;">
+              {% if item.product.productimages.all %}
+              <img src="{{ item.product.productimages.first.product_image.url }}" alt="{{ item.product.name }}"
+                class="img-fluid rounded shadow-sm" style="max-width: 100px;">
+              {% else %}
+              <img src="{% static 'images/placeholder.png' %}" alt="No image" class="img-fluid rounded shadow-sm"
+                style="max-width: 100px;">
+              {% endif %}
+            </td>
 
-              <td>
-                <strong>{{ item.product.name }}</strong>
-                {% if item.product.brand %}
-                  <div class="text-muted small">{{ item.product.brand }}</div>
-                {% endif %}
-              </td>
+            <td>
+              <strong>{{ item.product.name }}</strong>
+              {% if item.product.brand %}
+              <div class="text-muted small">{{ item.product.brand }}</div>
+              {% endif %}
+            </td>
 
-              <td class="text-end">
-                <div class="action-icons d-flex justify-content-end">
+            <td class="text-end">
+              <div class="action-icons d-flex justify-content-end">
 
-                  <!-- View Product -->
-                  <a href="{% url 'product' item.product.id %}"
-                     class="text-primary"
-                     title="View Product">
-                    <i class="bi bi-eye"></i>
-                  </a>
+                <!-- View Product -->
+                <a href="{% url 'product' item.product.id %}" class="text-primary" title="View Product">
+                  <i class="bi bi-eye"></i>
+                </a>
 
-                  <!-- Add to Cart -->
-                  <a href="javascript:void(0);"
-                     onclick="addToCart({{ item.product.id }}, '{{ item.product.variation_set.first.size|default:'default' }}')"
-                     class="text-success"
-                     title="Add to Cart">
-                    <i class="bi bi-cart-plus"></i>
-                  </a>
+                <!-- Add to Cart -->
+                <a href="javascript:void(0);"
+                  onclick="addToCart({{ item.product.id }}, '{{ item.product.variation_set.first.size|default:'default' }}')"
+                  class="text-success" title="Add to Cart">
+                  <i class="bi bi-cart-plus"></i>
+                </a>
 
-                  <!-- Remove from Wishlist -->
-                  <a href="{% url 'remove_wishlist' item.id %}"
-                     class="text-danger"
-                     title="Remove from Wishlist">
-                    <i class="bi bi-trash"></i>
-                  </a>
+                <!-- Remove from Wishlist -->
+                <a href="{% url 'remove_wishlist' item.id %}" class="text-danger" title="Remove from Wishlist">
+                  <i class="bi bi-trash"></i>
+                </a>
 
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
 
-          </tbody>
-        </table>
-      </div>
+        </tbody>
+      </table>
+    </div>
 
-      <div class="text-center mt-4">
-        <a href="{% url 'shop' %}" class="btn btn-primary">Continue Shopping</a>
-      </div>
+    <div class="text-center mt-4">
+      <a href="{% url 'shop' %}" class="btn btn-primary">Continue Shopping</a>
+    </div>
 
     {% else %}
-      <div class="text-center">
-       
-             
-        <h4 class="mt-3">Your wishlist is empty</h4>
-        <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Continue Shopping</a>
-      </div>
+    <div class="text-center">
+
+
+      <h4 class="mt-3">Your wishlist is empty</h4>
+      <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Continue Shopping</a>
+    </div>
     {% endif %}
 
   </div>
@@ -146,10 +138,24 @@
 
 {% block scripts %}
 <script>
-function addToCart(productId, size) {
+  function addToCart(productId, size) {
     const selectedSize = size || 'default';
-    const url = `/add_to_cart/${productId}/${selectedSize}/`;
-    window.location.href = url;
-}
+    fetch(`/add_to_cart/${productId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: `size=${selectedSize}`
+    })
+      .then(response => {
+        if (response.ok) {
+          window.location.href = '/cart/';
+        } else {
+          alert("Failed to add to cart.");
+        }
+      })
+      .catch(error => console.error("Error:", error));
+  }
 </script>
 {% endblock %}

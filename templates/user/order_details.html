@@ -92,20 +92,27 @@
         </tr>
       </thead>
       <tbody>
-        {% for item in order.items.all %}
-        <tr>
-          <td>{{ item.product.name }}</td>
-          <td>{{ item.quantity }}</td>
-          <td class="text-end">₹{{ item.price|floatformat:2 }}</td>
-          <td class="text-end">₹{% widthratio item.price 1 item.quantity %}</td>
-           <td class="text-center">
+{% for item in order.items.all %}
+<tr>
+  <td>{{ item.product.name }}</td>
+  <td>{{ item.quantity }}</td>
+  <td class="text-end">₹{{ item.price|floatformat:2 }}</td>
+  <td class="text-end">₹{% widthratio item.price 1 item.quantity %}</td>
 
-    {% if order.status == "Delivered" %}
+  <td class="text-center">
+
+    {% if item.status == "Cancelled" %}
+        <span class="badge bg-danger">Cancelled</span>
+
+    {% elif item.status == "Returned" %}
+        <span class="badge bg-warning">Returned</span>
+
+    {% elif order.status == "Delivered" %}
         <a href="{% url 'return_item' item.id %}" class="btn btn-outline-warning btn-sm">
             Return
         </a>
 
-    {% elif order.status != "Cancelled" %}
+    {% else %}
         <form action="{% url 'cancel_item' item.id %}" method="post" style="display:inline;">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -116,10 +123,9 @@
     {% endif %}
 
   </td>
-
-        </tr>
-        {% endfor %}
-      </tbody>
+</tr>
+{% endfor %}
+</tbody>
     </table>
 
     <!-- PRICE SUMMARY -->

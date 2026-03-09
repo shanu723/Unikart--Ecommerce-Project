@@ -11,6 +11,7 @@
   border-radius: 0;
   padding: 8px 16px;
   font-weight: 500;
+  cursor: pointer;
 }
 
 .order-tabs .nav-link.active {
@@ -55,7 +56,6 @@
 </style>
 
 <div class="container py-5">
-
   <h3 class="text-center mb-4 fw-semibold">My Orders</h3>
 
   <!-- Search -->
@@ -69,13 +69,37 @@
   </div>
 
   <!-- Tabs -->
- <ul class="nav justify-content-center mb-4 order-tabs" id="orderTabs">
-  <li class="nav-item"><a class="nav-link {% if current_status == 'All' %}active{% endif %}" href="?status=All">All</a></li>
-  <li class="nav-item"><a class="nav-link {% if current_status == 'Delivered' %}active{% endif %}" href="?status=Delivered">Delivered</a></li>
-  <li class="nav-item"><a class="nav-link {% if current_status == 'Cancelled' %}active{% endif %}" href="?status=Cancelled">Cancelled</a></li>
-  <li class="nav-item"><a class="nav-link {% if current_status == 'Returned' %}active{% endif %}" href="?status=Returned">Returned</a></li>
-</ul>
+ <ul class="nav justify-content-center mb-4 order-tabs">
 
+<li class="nav-item">
+<a href="?status=All"
+class="nav-link {% if current_status == 'All' %}active{% endif %}">
+All
+</a>
+</li>
+
+<li class="nav-item">
+<a href="?status=Delivered"
+class="nav-link {% if current_status == 'Delivered' %}active{% endif %}">
+Delivered
+</a>
+</li>
+
+<li class="nav-item">
+<a href="?status=Cancelled"
+class="nav-link {% if current_status == 'Cancelled' %}active{% endif %}">
+Cancelled
+</a>
+</li>
+
+<li class="nav-item">
+<a href="?status=Returned"
+class="nav-link {% if current_status == 'Returned' %}active{% endif %}">
+Returned
+</a>
+</li>
+
+</ul>
 
   {% if page_obj %}
   <div class="table-responsive">
@@ -85,137 +109,140 @@
           <th>Order</th>
           <th>Date</th>
           <th>Status</th>
-          <th class="text-start">Items</th>
-          <th>Total</th>
-          <th></th>
+          <th class="text-start">Item</th>
+          <th>Price</th>
+          <th>Actions</th>
         </tr>
       </thead>
-
       <tbody id="ordersTable">
         {% for order in page_obj %}
-        <tr class="order-row"
-            data-status="{{ order.status }}"
-            data-search="#{{ order.id }} {% for item in order.items.all %} {{ item.product.name }} {% endfor %}">
+          {% for item in order.items.all %}
+            {% if current_status == "All" or item.status == current_status %}
+            <tr class="order-row" data-status="{{ item.status }}" data-search="#{{ order.id }} {{ item.product.name }}">
+              <!-- Order ID -->
+              <td class="fw-medium text-center">#{{ order.id }}</td>
 
-          <td class="fw-medium text-center">#{{ order.id }}</td>
+              <!-- Order Date -->
+              <td class="text-center">
+                {% timezone "Asia/Kolkata" %}
+                  {{ order.created_at|date:"d M Y" }}
+                {% endtimezone %}
+              </td>
 
-          <td class="text-center">
-            {% timezone "Asia/Kolkata" %}
-              {{ order.created_at|date:"d M Y" }}
-            {% endtimezone %}
-          </td>
+              <!-- Item Status -->
+              <td class="text-center">
+                {% if item.status == "Delivered" %}
+                  <span class="badge-status badge-delivered">Delivered</span>
+                {% elif item.status == "Cancelled" %}
+                  <span class="badge-status badge-cancelled">Cancelled</span>
+                {% elif item.status == "Returned" %}
+                  <span class="badge-status badge-returned">Returned</span>
+                {% else %}
+                  <span class="badge-status badge-processing">{{ item.status }}</span>
+                {% endif %}
+              </td>
 
-          <td class="text-center">
-            {% if order.status == "Delivered" %}
-              <span class="badge-status badge-delivered">Delivered</span>
-            {% elif order.status == "Cancelled" %}
-              <span class="badge-status badge-cancelled">Cancelled</span>
-            {% elif order.status == "Returned" %}
-              <span class="badge-status badge-returned">Returned</span>
-            {% else %}
-              <span class="badge-status badge-processing">Processing</span>
+              <!-- Item Details -->
+              <td>{{ item.product.name }} × {{ item.quantity }}</td>
+
+              <!-- Item Price -->
+              <td class="fw-semibold text-center">₹{{ item.price|floatformat:2 }}</td>
+
+              <!-- Actions -->
+              <td class="text-center">
+                {% if item.status == "Processing" %}
+                  <a href="{% url 'cancel_item' item.id %}" class="btn btn-sm btn-danger">Cancel</a>
+                {% endif %}
+                <a href="{% url 'order_detail' order.id %}" class="text-dark ms-2" title="View Details">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+
+            </tr>
             {% endif %}
-          </td>
-
-          <td>
-            {% for item in order.items.all %}
-              <div>{{ item.product.name }} × {{ item.quantity }}</div>
-            {% endfor %}
-          </td>
-
-          <td class="fw-semibold text-center">
-            ₹{{ order.total|floatformat:2 }}
-          </td>
-<td class="text-center">
-
-  <a href="{% url 'order_detail' order.id %}"
-     class="text-dark me-2"
-     title="View Details"
-     style="font-size: 18px;">
-     <i class="bi bi-eye"></i>
-  </a>
-
-  
-</td>
-
-
-        </tr>
+          {% endfor %}
         {% endfor %}
       </tbody>
     </table>
   </div>
+
   {% if page_obj.has_other_pages %}
-<nav aria-label="Page navigation example">
-  <ul class="pagination justify-content-center">
-    {% if page_obj.has_previous %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-          &laquo;
-        </a>
-      </li>
-    {% else %}
-      <li class="page-item disabled">
-        <span class="page-link">&laquo;</span>
-      </li>
-    {% endif %}
-
-    {% for num in page_obj.paginator.page_range %}
-      {% if page_obj.number == num %}
-        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+  <nav aria-label="Page navigation example">
+    <ul class="pagination justify-content-center">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?status={{ current_status }}&page={{ page_obj.previous_page_number }}">&laquo;</a>
+        </li>
       {% else %}
-        <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
       {% endif %}
-    {% endfor %}
 
-    {% if page_obj.has_next %}
-      <li class="page-item">
-        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-          &raquo;
-        </a>
-      </li>
-    {% else %}
-      <li class="page-item disabled">
-        <span class="page-link">&raquo;</span>
-      </li>
-    {% endif %}
-  </ul>
-</nav>
-{% endif %}
+      {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+          <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% else %}
+          <li class="page-item"><a class="page-link" href="?status={{ current_status }}&page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+      {% endfor %}
 
-
-  {% else %}
-  <div class="text-center py-5">
-    <p class="text-muted">You haven’t placed any orders yet.</p>
-    <a href="{% url 'shop' %}" class="btn btn-dark btn-sm">Shop Now</a>
-  </div>
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?status={{ current_status }}&page={{ page_obj.next_page_number }}">&raquo;</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      {% endif %}
+    </ul>
+  </nav>
   {% endif %}
-
+  {% endif %}
 </div>
 
+{% endblock %}
+
+{% block script %}
 <script>
-const tabs = document.querySelectorAll("#orderTabs .nav-link");
-const rows = document.querySelectorAll(".order-row");
-const searchInput = document.getElementById("orderSearch");
 
-tabs.forEach(tab => {
-  tab.addEventListener("click", () => {
-    tabs.forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    const status = tab.dataset.status;
 
-    rows.forEach(row => {
-      row.style.display =
-        status === "All" || row.dataset.status === status ? "" : "none";
+document.addEventListener("DOMContentLoaded", function () {
+
+  const tabs = document.querySelectorAll("#orderTabs .nav-link");
+  const rows = document.querySelectorAll(".order-row");
+  const searchInput = document.getElementById("orderSearch");
+
+  tabs.forEach(tab => {
+    tab.addEventListener("click", function (e) {
+      e.preventDefault();
+
+      const status = this.textContent.trim();
+
+      tabs.forEach(t => t.classList.remove("active"));
+      this.classList.add("active");
+
+      rows.forEach(row => {
+        if (status === "All" || row.dataset.status === status) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
     });
   });
-});
 
-searchInput.addEventListener("keyup", function () {
-  const value = this.value.toLowerCase();
-  rows.forEach(row => {
-    row.style.display = row.dataset.search.toLowerCase().includes(value) ? "" : "none";
-  });
+  if (searchInput) {
+    searchInput.addEventListener("keyup", function () {
+      const value = this.value.toLowerCase();
+
+      rows.forEach(row => {
+        if (row.dataset.search.toLowerCase().includes(value)) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      });
+    });
+  }
+
 });
 </script>
-
 {% endblock %}

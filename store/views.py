@@ -1485,9 +1485,14 @@ def myorders_view(request):
     status = request.GET.get('status', 'All')
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     
-    if status != 'All':
-        orders = orders.filter(status=status)
+    if status == "Cancelled":
+        orders = Order.objects.filter(items__status="Cancelled").distinct()
+    elif status == "Returned":
+        orders = orders.filter(items__status="Returned").distinct()
+    elif status == "Delivered":
+        orders = orders.filter(items__status="Delteverd").distinct()    
 
+    orders = orders.order_by('-created_at')
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1768,7 +1773,7 @@ def cancel_item(request,item_id):
     order = item.order
     wallet = Wallet.objects.get(user = request.user)
 
-    if order.status == 'Cancelled':
+    if item.status == 'Cancelled':
         messages.info(request,"This order is already cancelled")
         return redirect('order_detail',order_id=order.id)
 

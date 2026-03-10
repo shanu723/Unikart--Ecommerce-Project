@@ -1424,7 +1424,17 @@ def resend_email_otp(request):
 
 def wallet_view(request):
     wallet,created = Wallet.objects.get_or_create(user=request.user)
-    return render(request,'user/wallet.html',{'wallet':wallet})
+    transaction_type = request.GET.get('type')
+    transactions = WalletTransaction.objects.filter(wallet=wallet)
+    if transaction_type:
+        transactions = transactions.filter(transaction_type=transaction_type)
+    transactions = transactions.order_by('-created_at')
+
+    paginator = Paginator(transactions,10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)   
+    context = {'wallet':wallet,'page_obj':page_obj,'selected_type':transaction_type}
+    return render(request,'user/wallet.html',context)
 
 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 def add_money_to_wallet(request):

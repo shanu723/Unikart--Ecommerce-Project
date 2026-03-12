@@ -1,8 +1,11 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Coupon
+from .models import Coupon,Offer
 import re
-
+class OfferForm(forms.ModelForm):
+    class Meta:
+       model=Offer
+       fields='__all__'
 
 class CouponForm(forms.ModelForm):
 

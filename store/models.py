@@ -38,8 +38,16 @@ class UserProfile(models.Model):
 
     profile_photo = models.ImageField(upload_to='profile_photos/',default='profile_photos/default.jpg', blank=True, null=True)
 
+    referral_code = models.CharField(max_length=10, null=True, blank=True,unique=True)
+    referred_by = models.ForeignKey('self',on_delete=models.SET_NULL,null=True,blank=True)
+
     def __str__(self): 
         return self.user.username
+
+    def save(self,*args,**kwargs):
+        if not self.referral_code:
+            self.referral_code = str(uuid.uuid4())[:8].upper()
+        super().save(*args,**kwargs)        
 
 @receiver(post_save,sender=User)
 def create_user_profile(sender,instance,created,**kwargs):
@@ -459,4 +467,11 @@ class Refund(models.Model):
     def __str__(self):
         return f"Refund for OrderItem {self.order_item.id}"        
 
-         
+class Notification(models.Model):
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='notifications')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.message        

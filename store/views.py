@@ -31,7 +31,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
-from .forms import CouponForm
+from .forms import CouponForm,OfferForm
 from decimal import Decimal
 from django.views.decorators.csrf import csrf_exempt
 
@@ -79,18 +79,21 @@ def user_dashboard(request):
     return render(request, 'user/user_dashboard.html',{'user':request.user})         
 
 def signup_view(request):
+    ref_code = request.GET.get('ref')   
+    if ref_code:
+        request.session['referral_code']=ref_code 
     if request.method=='POST':
         username=request.POST['username']
         email=request.POST['email']
         password=request.POST['password']
         confirm_password=request.POST['confirm_password']
         
-        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-1-]+$',username):
+        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9]+$',username):
             messages.error(request,"Uername must contain atleast one letters,numbers")
             return redirect('signup')
-        if len(password)<6:
+        if len(password)<8:
             messages.error(request,"Password must be at least 8 charaedters")
-            return redirect('signiup')
+            return redirect('signup')
         if not re.search(r'[A-Za-z]',password):
             messages.error(request,"Password must contain at least one letter")
             return redirect('signup')
@@ -110,6 +113,8 @@ def signup_view(request):
         if User.objects.filter(email=email).exists():
             messages.error(request,'Email already exists')
             return redirect('signup')
+
+      
 
         request.session['signup_data']={
             'username':username,
@@ -173,7 +178,24 @@ def verify_otp(request, username):
             user.save()
 
             profile, created = UserProfile.objects.get_or_create(user=user)
+            ref_code = request.session.get('referral_code')
+            if ref_code:
+                try:
+                    referrer = UserProfile.objects.get(referral_code=ref_code)
+         
+                    if referrer.user != user:
+                        profile.referred_by = referrer
+                        profile.save()
+            
+                        wallet, created = Wallet.objects.get_or_create(user=referrer.user)
+                        wallet.balance += 100
+                        wallet.save()
 
+                        WalletTransaction.objects.create(wallet=wallet,amount=100,transaction_type='credit',description="Rsferral bonus credied")
+
+                        Notification.objects.create(user=referrer.user,message="₹100 referral bonus credited to your wallet.")
+                except UserProfile.DoesNotExist:
+                    pass
             user = authenticate(
                 request,
                 username=signup_data['username'],
@@ -1975,6 +1997,10 @@ def place_orders(request):
             return redirect('checkout')
 
     elif payment_method == "cod":
+
+        if total >50000:
+            messages.error(request,"COD not available for more than 50000")
+            return redirect("checkout")
 
         order.payment_method = "Cash on Delivery"
         order.status = "Processing"

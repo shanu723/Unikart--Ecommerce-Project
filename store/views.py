@@ -24,6 +24,7 @@ from django.shortcuts import get_object_or_404
 from django.http import JsonResponse,HttpResponse
 import json
 import re
+from django.utils.dateparse import parse_datetime
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from django.template.loader import get_template
@@ -151,8 +152,7 @@ def verify_otp(request, username):
         messages.error(request, "Session mismatch. Please signup again.")
         return redirect('signup')
 
-    otp_time_obj = timezone.datetime.fromisoformat(otp_time)
-
+    otp_time_obj = parse_datetime(otp_time)
     if timezone.is_naive(otp_time_obj):
         otp_time_obj = timezone.make_aware(otp_time_obj)
   
@@ -244,7 +244,7 @@ def resend_otp(request,username):
 
     
     messages.success(request,"A new otp has been sent to your email")
-    return render(request,'verify_otp.html',{'username': username})    
+    return redirect('verify_otp', username=username) 
 @login_required
 def user_list(request):
     filter_status = request.GET.get('status','all')
@@ -301,10 +301,12 @@ def admin_dashboard(request):
     }
     return render(request, 'admin_templates/admin_dashboard.html', context)
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def category_list(request):
     categories=Category.objects.filter(status=True)
     return render(request,'admin_templates/category.html',{'categories':categories})
 @login_required    
+@user_passes_test(lambda u: u.is_superuser)
 def add_category(request):
     if request.method=='POST':
         name=request.POST.get('name')
@@ -321,6 +323,7 @@ def add_category(request):
 
     return render(request,'admin_templates/add_category.html')      
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def edit_category(request,category_id):
     category=get_object_or_404(Category,id=category_id)
     if request.method=="POST":
@@ -339,6 +342,7 @@ def edit_category(request,category_id):
         return redirect('category')
     return render(request,'admin_templates/edit_category.html',{'category':category})    
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def delete_category(request,category_id):
     category=get_object_or_404(Category,id=category_id)
     category.status=False
@@ -366,6 +370,7 @@ def product_list(request):
 
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def add_product(request):
     categories= Category.objects.all()
 
@@ -489,6 +494,7 @@ def add_product(request):
 
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def edit_product(request,product_id):
     product=get_object_or_404(Product,id=product_id)
     categories=Category.objects.all()
@@ -818,7 +824,8 @@ def contact(request):
 
 def about(request):
     return render(request, 'about.html')
-@login_required    
+@login_required  
+@user_passes_test(lambda u: u.is_superuser)  
 def add_offer(request):
     if request.method == 'POST':
         form = OfferForm(request.POST)
@@ -865,6 +872,7 @@ def add_offer(request):
     })
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def offers_list(request):
     offers = Offer.objects.all().order_by('-id')
 
@@ -880,6 +888,7 @@ def offers_list(request):
     'search_offer':search_offer})
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def edit_offer(request,id):
     offer = get_object_or_404(Offer,id=id)
     categories = Category.objects.all()
@@ -908,6 +917,7 @@ def edit_offer(request,id):
     return render(request,'admin_templates/edit_offer.html',context)
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def delete_offer(request,id):
     offer_to = get_object_or_404(Offer,id=id)
     offer_to.delete()
@@ -1001,10 +1011,12 @@ def remove_cart_item(request, item_id):
     return JsonResponse({'success': False, 'error': 'Invalid request'}, status=400)
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def coupon_list(request):
     coupons = Coupon.objects.all().order_by('-id')
     return render (request,'admin_templates/coupon_list.html',{'coupons':coupons})
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def add_coupon(request):
     if request.method == "POST":
         form = CouponForm(request.POST)
@@ -1020,6 +1032,7 @@ def add_coupon(request):
     return render(request,'admin_templates/add_coupon.html',{'form':form})    
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def edit_coupon(request, id):
     coupon = get_object_or_404(Coupon, id=id)
 
@@ -1198,14 +1211,16 @@ def update_profile(request):
                 messages.success(request, "OTP sent to new email")
                 return redirect('verify_update_otp')
 
-        if phone:        
-            phone = phone.strip()
-            if phone and phone != profile.phone:
-                cleaned_phone = re.sub(r'\D', '', phone)
-                if len(cleaned_phone) != 10:
-                    messages.error(request, "Enter a valid 10-digit phone number.")
-                    return redirect('profile')
-                profile.phone = cleaned_phone
+        phone = request.POST.get('phone', '').strip()
+
+        cleaned_phone = re.sub(r'\D', '', phone)
+
+        if cleaned_phone:
+            if len(cleaned_phone) != 10:
+                messages.error(request, "Enter a valid 10-digit phone number.")
+                return redirect('profile')
+
+            profile.phone = cleaned_phone
 
         if photo:
             profile.profile_photo = photo
@@ -1615,21 +1630,58 @@ ORDER_FLOW = {
     "Cancelled": []
 }
 @login_required
-def update_order_status(request, order_id):
-    if request.method == 'POST':
-        order = get_object_or_404(Order, id=order_id)
-        new_status = request.POST.get('status')
-        allowed_next = ORDER_FLOW.get(order.status, [])
+def cus_order_details(request, order_id):
+
+    order = (
+        Order.objects
+        .select_related("user")
+        .prefetch_related("items__product", "items__variation")
+        .get(id=order_id)
+    )
+
+    allowed_status = ORDER_FLOW.get(order.status, [])
+
+    return render(
+        request,
+        "admin_templates/cus_order_details.html",
+        {
+            "order": order,
+            "allowed_status": allowed_status
+        }
+    )
+    
+@login_required
+def update_item_status(request, item_id):
+
+    item = get_object_or_404(OrderItem, id=item_id)
+    order = item.order
+
+    if request.method == "POST":
+
+        new_status = request.POST.get("status")
+
+        if not new_status:
+            messages.error(request, "Please select a status")
+            return redirect("cus_order_details", order_id=order.id)
+
+        allowed_next = ORDER_FLOW.get(item.status, [])
+
         if new_status in allowed_next:
-            order.status = new_status
-            order.save()  
-            messages.success(request, f"Order #{order.id} updated to {new_status}")
+            item.status = new_status
+            item.save()
+
+            messages.success(
+                request,
+                f"Item #{item.id} updated to {new_status}"
+            )
+
         else:
             messages.error(
                 request,
-                f"Cannot change status from '{order.status}' to '{new_status}'"
+                f"Cannot change status from '{item.status}' to '{new_status}'"
             )
-        return redirect(request.META.get('HTTP_REFERER', 'user/order_list'))
+
+    return redirect("cus_order_details", order_id=order.id)
       
 
 @login_required

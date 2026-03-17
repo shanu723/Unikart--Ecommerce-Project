@@ -23,12 +23,34 @@
           <p><strong>Email:</strong> {{ order.user.email }}</p>
           <p><strong>Phone:</strong> {{ order.user.profile.phone }}</p>
 
-          <p>
-            <strong>Status:</strong>
-            <span class="badge badge-gradient-success">
-              {{ order.status }}
-            </span>
-          </p>
+         <p><strong>Status:</strong></p>
+
+<form method="POST" action="{% url 'update_item_status' order.id %}">
+  {% csrf_token %}
+
+  <div class="d-flex">
+
+    <select name="status" class="form-control mr-2">
+
+      <option selected disabled>
+        Current: {{ order.status }}
+      </option>
+
+      {% for next_status in allowed_status %}
+      <option value="{{ next_status }}">
+        {{ next_status }}
+      </option>
+      {% endfor %}
+
+    </select>
+
+    <button type="submit" class="btn btn-gradient-primary btn-sm">
+      Update
+    </button>
+
+  </div>
+
+</form>
 
           <p><strong>Payment Method:</strong> {{ order.payment_method }}</p>
 
@@ -66,44 +88,44 @@
 
         <h4 class="card-title">Ordered Products</h4>
 
-        <div class="table-responsive">
+       <div class="table-responsive">
 
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Variation</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
-              </tr>
-            </thead>
+<table class="table table-hover">
+<thead>
+<tr>
+<th>Product</th>
+<th>Variation</th>
+<th>Qty</th>
+<th>Price</th>
+<th>Total</th>
+</tr>
+</thead>
 
-            <tbody>
+<tbody>
 
-              {% for item in items %}
+{% for item in order.items.all %}
 
-              <tr>
-                <td>{{ item.product.name }}</td>
-                <td>{{ item.variation }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>₹{{ item.price }}</td>
-                <td>₹{{ item.price|floatformat:2 }}</td>
-              </tr>
+<tr>
+<td>{{ item.product.name }}</td>
+<td>{{ item.variation }}</td>
+<td>{{ item.quantity }}</td>
+<td>₹{{ item.price }}</td>
+<td>₹{{ item.price|floatformat:2 }}</td>
+</tr>
 
-              {% empty %}
+{% empty %}
 
-              <tr>
-                <td colspan="5" class="text-center">No products found</td>
-              </tr>
+<tr>
+<td colspan="5" class="text-center">No products found</td>
+</tr>
 
-              {% endfor %}
+{% endfor %}
 
-            </tbody>
+</tbody>
+</table>
 
-          </table>
-
-        </div>
+</div>
+      
 
       </div>
     </div>

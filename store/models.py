@@ -261,7 +261,7 @@ class ReturnRequest(models.Model):
         ('Accepted','Accepted'),
         ('Rejected','Rejected'),
     ]      
-    order = models.ForeignKey(OrderItem,on_delete=models.CASCADE)
+    item = models.ForeignKey(OrderItem, on_delete=models.CASCADE)
     user = models.ForeignKey(User,on_delete=models.CASCADE)
     reason = models.TextField()
     status = models.CharField(max_length=10,choices=STATUS_CHOICES,default='Pending')

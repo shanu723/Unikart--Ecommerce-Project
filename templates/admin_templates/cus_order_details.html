@@ -9,7 +9,6 @@
     <h3 class="page-title">Order Details</h3>
   </div>
 
-
   <div class="row">
 
     <!-- Customer Details -->
@@ -23,41 +22,18 @@
           <p><strong>Email:</strong> {{ order.user.email }}</p>
           <p><strong>Phone:</strong> {{ order.user.profile.phone }}</p>
 
-         <p><strong>Status:</strong></p>
-
-<form method="POST" action="{% url 'update_item_status' order.id %}">
-  {% csrf_token %}
-
-  <div class="d-flex">
-
-    <select name="status" class="form-control mr-2">
-
-      <option selected disabled>
-        Current: {{ order.status }}
-      </option>
-
-      {% for next_status in allowed_status %}
-      <option value="{{ next_status }}">
-        {{ next_status }}
-      </option>
-      {% endfor %}
-
-    </select>
-
-    <button type="submit" class="btn btn-gradient-primary btn-sm">
-      Update
-    </button>
-
-  </div>
-
-</form>
+          <p>
+            <strong>Order Status:</strong>
+            <span class="badge badge-gradient-info">
+              {{ order.status }}
+            </span>
+          </p>
 
           <p><strong>Payment Method:</strong> {{ order.payment_method }}</p>
 
         </div>
       </div>
     </div>
-
 
     <!-- Shipping Address -->
     <div class="col-md-6 grid-margin stretch-card">
@@ -76,98 +52,127 @@
 
   </div>
 
-
   <!-- Ordered Products -->
-
   <div class="row">
 
-  <!-- Ordered Products -->
-  <div class="col-md-8 grid-margin stretch-card">
-    <div class="card">
-      <div class="card-body">
+    <div class="col-md-12 grid-margin stretch-card">
+      <div class="card">
+        <div class="card-body">
 
-        <h4 class="card-title">Ordered Products</h4>
+          <h4 class="card-title">Ordered Products</h4>
 
-       <div class="table-responsive">
+          <div class="table-responsive">
 
-<table class="table table-hover">
-<thead>
-<tr>
-<th>Product</th>
-<th>Variation</th>
-<th>Qty</th>
-<th>Price</th>
-<th>Total</th>
-</tr>
-</thead>
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Variation</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
 
-<tbody>
+              <tbody>
 
-{% for item in order.items.all %}
+                {% for item in order.items.all %}
 
-<tr>
-<td>{{ item.product.name }}</td>
-<td>{{ item.variation }}</td>
-<td>{{ item.quantity }}</td>
-<td>₹{{ item.price }}</td>
-<td>₹{{ item.price|floatformat:2 }}</td>
-</tr>
+                <tr>
+                  <td>{{ item.product.name }}</td>
+                  <td>{{ item.variation }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>₹{{ item.price }}</td>
+                  <td>₹{{ item.price|floatformat:2 }} × {{ item.quantity }}</td>
 
-{% empty %}
+                  <!-- Current Status -->
+                  <td>
+                    <span class="badge badge-outline-primary">
+                      {{ item.status }}
+                    </span>
+                  </td>
 
-<tr>
-<td colspan="5" class="text-center">No products found</td>
-</tr>
+                  <!-- Update Status -->
+                  <td>
+                    <form method="POST" action="{% url 'update_item_status' item.id %}">
+                      {% csrf_token %}
 
+                      <select name="status" class="form-control form-control-sm">
+
+                        <option value="" disabled selected>
+                          Change status
+                        </option>
+
+                        {% for status in item.allowed_status %}
+  <option value="{{ status }}">{{ status }}</option>
 {% endfor %}
 
-</tbody>
-</table>
+                      </select>
 
-</div>
-      
+                      <button type="submit" class="btn btn-sm btn-primary mt-1">
+                        Update
+                      </button>
 
+                    </form>
+                  </td>
+
+                </tr>
+
+                {% empty %}
+
+                <tr>
+                  <td colspan="7" class="text-center">No products found</td>
+                </tr>
+
+                {% endfor %}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
       </div>
     </div>
-  </div>
 
+  </div>
 
   <!-- Order Summary -->
-  <div class="col-md-4 grid-margin stretch-card">
-    <div class="card">
-      <div class="card-body">
+  <div class="row">
+    <div class="col-md-4 offset-md-8 grid-margin stretch-card">
+      <div class="card">
+        <div class="card-body">
 
-        <h4 class="card-title">Order Summary</h4>
+          <h4 class="card-title">Order Summary</h4>
 
-        <div class="d-flex justify-content-between">
-          <span>Subtotal</span>
-          <strong>₹{{ order.subtotal }}</strong>
+          <div class="d-flex justify-content-between">
+            <span>Subtotal</span>
+            <strong>₹{{ order.subtotal }}</strong>
+          </div>
+
+          <div class="d-flex justify-content-between mt-2">
+            <span>Discount</span>
+            <strong>₹{{ order.discount }}</strong>
+          </div>
+
+          <div class="d-flex justify-content-between mt-2">
+            <span>Shipping</span>
+            <strong>₹{{ order.shipping }}</strong>
+          </div>
+
+          <hr>
+
+          <div class="d-flex justify-content-between">
+            <h5>Total</h5>
+            <h5 class="text-primary">₹{{ order.total }}</h5>
+          </div>
+
         </div>
-
-        <div class="d-flex justify-content-between mt-2">
-          <span>Discount</span>
-          <strong>₹{{ order.discount }}</strong>
-        </div>
-
-        <div class="d-flex justify-content-between mt-2">
-          <span>Shipping</span>
-          <strong>₹{{ order.shipping }}</strong>
-        </div>
-
-        <hr>
-
-        <div class="d-flex justify-content-between">
-          <h5>Total</h5>
-          <h5 class="text-primary">₹{{ order.total }}</h5>
-        </div>
-
       </div>
     </div>
-  </div>
-
-</div>
-    </div>
-
   </div>
 
 </div>

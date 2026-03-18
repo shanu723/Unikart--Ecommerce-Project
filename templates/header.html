@@ -63,52 +63,28 @@
                             </nav>
                         </div>
                          <!-- Header Right -->
-                      <div class="header-right">
-    <ul>
+                     <!-- Header Right -->
+<div class="header-right">
+    <ul class="d-flex align-items-center">
 
-        {% if user.is_authenticated %}
-        <li class="dropdown">
-            
-              <a href="#" data-bs-toggle="dropdown">
-          🔔
-        {% if notifications %}
-        <span class="badge bg-danger">{{ notifications.count }}</span>
-        {% endif %}
-    </a>
-
-            <div class="dropdown-menu p-2" style="width:250px; max-height:300px; overflow-y:auto;">
-
-                {% for n in notifications %}
-                <div class="dropdown-item small">
-                    {{ n.message }}
-                </div>
-                {% empty %}
-                <div class="dropdown-item small">
-                    No notifications
-                </div>
-                {% endfor %}
-
-            </div>
-        </li>
-        {% endif %}
+       
 
         {% if not user.is_authenticated %}
-        <li>
-            <a href="{% url 'login' %}">
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'login' %}">
                 <span class="flaticon-user"></span>
             </a>
         </li>
         {% endif %}
 
-        <li>
-            <a href="{% url 'cart' %}">
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'cart' %}">
                 <span class="flaticon-shopping-cart"></span>
             </a>
         </li>
 
     </ul>
 </div>
-                    </div>
                     <!-- Mobile Menu -->
                     <div class="col-12">
                         <div class="mobile_menu d-block d-lg-none"></div>

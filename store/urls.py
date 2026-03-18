@@ -58,7 +58,6 @@ urlpatterns = [
     path('checkout/',views.check_out,name='checkout'),
     path('order-confirmation/', views.order_confirmation, name='order_confirmation'),
     path('download-invoice/<int:order_id>/', views.download_invoice_pdf, name='download_invoice_pdf'),
-    path('return_order/<int:order_id>/', views.return_order, name='return_order'),
     path('sales-report/', views.sales_report, name='sales_report'),
     path('download-sales-excel/', views.download_sales_excel, name='download_sales_excel'),
     path('download-sales-pdf/', views.download_sales_pdf, name='download_sales_pdf'),
@@ -72,7 +71,7 @@ urlpatterns = [
     path("address/set-default/<int:address_id>/", views.set_default_address, name="set_default_address"),
     path('order_list/',views.order_list,name='order_list'),
     path('update-item-status/<int:item_id>/', views.update_item_status, name='update_item_status'),
-    
+    path('notifications/', views.notifications_page, name='notifications_page'),
     path('myorders/',views.myorders_view,name='myorders'),
     path('order/<int:order_id>/', views.order_detail, name='order_detail'),
     path('return-requests/', views.return_requests, name='return_requests'),

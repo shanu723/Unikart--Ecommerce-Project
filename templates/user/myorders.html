@@ -69,7 +69,7 @@
   </div>
 
   <!-- Tabs -->
- <ul class="nav justify-content-center mb-4 order-tabs">
+ <ul id="orderTabs" class="nav justify-content-center mb-4 order-tabs">
 
 <li class="nav-item">
 <a href="?status=All"
@@ -110,63 +110,65 @@ Returned
           <th>Date</th>
           <th>Status</th>
           <th class="text-start">Item</th>
-          <th>Price</th>
+          
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody id="ordersTable">
-        {% for order in page_obj %}
-          {% for item in order.items.all %}
-            {% if current_status == "All" or item.status == current_status %}
-            <tr class="order-row" data-status="{{ item.status }}" data-search="#{{ order.id }} {{ item.product.name }}">
-              <!-- Order ID -->
-              <td class="fw-medium text-center">#{{ order.id }}</td>
+     <tbody id="ordersTable">
+  {% for order in page_obj %}
 
-              <!-- Order Date -->
-              <td class="text-center">
-                {% timezone "Asia/Kolkata" %}
-                  {{ order.created_at|date:"d M Y" }}
-                {% endtimezone %}
-              </td>
+  <tr class="order-row"
+      data-status="{{ order.status }}"
+      data-search="#{{ order.id }} {% for item in order.items.all %}{{ item.product.name }} {% endfor %}">
 
-              <!-- Item Status -->
-              <td class="text-center">
-                {% if item.status == "Delivered" %}
-                  <span class="badge-status badge-delivered">Delivered</span>
-                {% elif item.status == "Cancelled" %}
-                  <span class="badge-status badge-cancelled">Cancelled</span>
-                {% elif item.status == "Returned" %}
-                  <span class="badge-status badge-returned">Returned</span>
-                {% else %}
-                  <span class="badge-status badge-processing">{{ item.status }}</span>
-                {% endif %}
-              </td>
+    <!-- Order ID -->
+    <td class="fw-medium text-center">#{{ order.id }}</td>
 
-              <!-- Item Details -->
-              <td>{{ item.product.name }} × {{ item.quantity }}</td>
+    <!-- Order Date -->
+    <td class="text-center">
+      {% timezone "Asia/Kolkata" %}
+        {{ order.created_at|date:"d M Y" }}
+      {% endtimezone %}
+    </td>
 
-              <!-- Item Price -->
-              <td class="fw-semibold text-center">₹{{ item.price|floatformat:2 }}</td>
+    <!-- Order Status -->
+    <td class="text-center">
+      {% if order.status == "Delivered" %}
+        <span class="badge-status badge-delivered">Delivered</span>
+      {% elif order.status == "Cancelled" %}
+        <span class="badge-status badge-cancelled">Cancelled</span>
+      {% elif order.status == "Returned" %}
+        <span class="badge-status badge-returned">Returned</span>
+      {% else %}
+        <span class="badge-status badge-processing">{{ order.status }}</span>
+      {% endif %}
+    </td>
 
-              <!-- Actions -->
-              <td class="text-center">
-                {% if item.status == "Processing" %}
-                  <a href="{% url 'cancel_item' item.id %}" class="btn btn-sm btn-danger">Cancel</a>
-                {% endif %}
-                <a href="{% url 'order_detail' order.id %}" class="text-dark ms-2" title="View Details">
-                  <i class="bi bi-eye"></i>
-                </a>
-              </td>
+    <!-- Items Summary -->
+    <td class="text-start">
+      {% for item in order.items.all %}
+        {{ item.product.name }} × {{ item.quantity }}
+        {% if not forloop.last %}<br>{% endif %}
+      {% endfor %}
+    </td>
 
-            </tr>
-            {% endif %}
-          {% endfor %}
-        {% endfor %}
-      </tbody>
+    <!-- Total Price -->
+    
+    <!-- Actions -->
+    <td class="text-center">
+      <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-dark">
+        View Details
+      </a>
+    </td>
+
+  </tr>
+
+  {% endfor %}
+</tbody>
     </table>
   </div>
 
-  {% if page_obj.has_other_pages %}
+  
   <nav aria-label="Page navigation example">
     <ul class="pagination justify-content-center">
       {% if page_obj.has_previous %}
@@ -195,7 +197,7 @@ Returned
     </ul>
   </nav>
   {% endif %}
-  {% endif %}
+  
 </div>
 
 {% endblock %}

@@ -98,11 +98,12 @@
                 </a>
 
                 <!-- Add to Cart -->
-                <a href="javascript:void(0);"
-                  onclick="addToCart({{ item.product.id }}, '{{ item.product.variation_set.first.size|default:'default' }}')"
-                  class="text-success" title="Add to Cart">
-                  <i class="bi bi-cart-plus"></i>
-                </a>
+               <form method="post" action="{% url 'add_to_cart' item.product.id item.product.variation_set.first.size|default:'default' %}" style="display:inline;">
+  {% csrf_token %}
+  <button type="submit" class="p-0 border-0 bg-transparent" title="Add to Cart">
+    <i class="bi bi-cart-plus text-success"></i>
+  </button>
+</form>
 
                 <!-- Remove from Wishlist -->
                 <a href="{% url 'remove_wishlist' item.id %}" class="text-danger" title="Remove from Wishlist">

@@ -80,74 +80,74 @@ def user_dashboard(request):
     return render(request, 'user/user_dashboard.html',{'user':request.user})         
 
 def signup_view(request):
-    ref_code = request.GET.get('ref')   
+    ref_code = request.GET.get('ref')
     if ref_code:
-        request.session['referral_code']=ref_code 
-    if request.method=='POST':
-        username=request.POST['username']
-        email=request.POST['email']
-        password=request.POST['password']
-        confirm_password=request.POST['confirm_password']
-        
-        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9]+$',username):
-            messages.error(request,"Uername must contain atleast one letters,numbers")
+        try:
+            UserProfile.objects.get(referral_code=ref_code)
+            request.session['referral_code'] = ref_code
+        except UserProfile.DoesNotExist:
+            pass
+
+    if request.method == 'POST':
+        username = request.POST['username']
+        email = request.POST['email']
+        password = request.POST['password']
+        confirm_password = request.POST['confirm_password']
+
+        if not re.match(r'^(?=.*[A-Za-z0-9])[A-Za-z0-9]+$', username):
+            messages.error(request, "Username must contain at least one letter and one number")
             return redirect('signup')
-        if len(password)<8:
-            messages.error(request,"Password must be at least 8 charaedters")
+        if len(password) < 8:
+            messages.error(request, "Password must be at least 8 characters")
             return redirect('signup')
-        if not re.search(r'[A-Za-z]',password):
-            messages.error(request,"Password must contain at least one letter")
+        if not re.search(r'[A-Za-z]', password):
+            messages.error(request, "Password must contain at least one letter")
             return redirect('signup')
-        if not re.search(r'[0-9]',password):
-            messages.error(request,"Password must contain at least one letter")
+        if not re.search(r'[0-9]', password):
+            messages.error(request, "Password must contain at least one number")
             return redirect('signup')
         if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', password):
-            messages.error(request, "Password must contain at least one special character.")
+            messages.error(request, "Password must contain at least one special character")
             return redirect('signup')
-
-        if password!=confirm_password:
-            messages.error(request,'Passwords does not match')
+        if password != confirm_password:
+            messages.error(request, 'Passwords do not match')
             return redirect('signup')
         if User.objects.filter(username=username).exists():
-            messages.error(request,"Username already exists")    
+            messages.error(request, "Username already exists")
             return redirect('signup')
         if User.objects.filter(email=email).exists():
-            messages.error(request,'Email already exists')
+            messages.error(request, 'Email already exists')
             return redirect('signup')
 
-      
-
-        request.session['signup_data']={
-            'username':username,
-            'password':password,
-            'email':email,   
+        request.session['signup_data'] = {
+            'username': username,
+            'password': password,
+            'email': email,
         }
-        code=f"{random.randint(100000,999999)}"
-        request.session['signup_otp']=code
-        request.session['signup_otp_time']=str(timezone.now())
+        code = f"{random.randint(100000, 999999)}"
+        request.session['signup_otp'] = code
+        request.session['signup_otp_time'] = str(timezone.now())
 
         send_mail(
-            subject='Verfication mail',
-            message=f"Hai {username}, This is your OTP {code} for signup Unikart ecommerce website .It wll expires in 10 minutes",
-            from_email="no-repaly@gmail.com",
+            subject='Verification mail',
+            message=f"Hi {username}, This is your OTP {code} for signup on Unikart. It will expire in 10 minutes.",
+            from_email="no-reply@gmail.com",
             recipient_list=[email],
             fail_silently=False,
         )
-        messages.success(request,"OTP sent successfully")
-        return redirect('verify_otp',username=username)
-    return render(request,'signup.html')  
+        messages.success(request, "OTP sent successfully")
+        return redirect('verify_otp', username=username)
+    return render(request, 'signup.html')
 
 
 def verify_otp(request, username):
-
     signup_data = request.session.get('signup_data')
     signup_otp = request.session.get('signup_otp')
     otp_time = request.session.get('signup_otp_time')
-  
+
     if not signup_data or not signup_otp or not otp_time:
         messages.error(request, "Session expired. Please signup again.")
         return redirect('signup')
-
     if signup_data.get('username') != username:
         messages.error(request, "Session mismatch. Please signup again.")
         return redirect('signup')
@@ -155,96 +155,92 @@ def verify_otp(request, username):
     otp_time_obj = parse_datetime(otp_time)
     if timezone.is_naive(otp_time_obj):
         otp_time_obj = timezone.make_aware(otp_time_obj)
-  
-
     if timezone.now() - otp_time_obj > timedelta(minutes=10):
         messages.error(request, "OTP expired. Please resend OTP.")
         return redirect('resend_otp', username=username)
 
     if request.method == 'POST':
-
         entered_otp = request.POST.get('otp', '').strip()
-       
         if entered_otp == signup_otp:
-          
-
             user = User.objects.create_user(
                 username=signup_data['username'],
                 password=signup_data['password'],
                 email=signup_data['email']
             )
-
             user.is_active = True
             user.save()
 
             profile, created = UserProfile.objects.get_or_create(user=user)
+
             ref_code = request.session.get('referral_code')
             if ref_code:
                 try:
                     referrer = UserProfile.objects.get(referral_code=ref_code)
-         
                     if referrer.user != user:
                         profile.referred_by = referrer
                         profile.save()
-            
+
                         wallet, created = Wallet.objects.get_or_create(user=referrer.user)
                         wallet.balance += 100
                         wallet.save()
 
-                        WalletTransaction.objects.create(wallet=wallet,amount=100,transaction_type='credit',description="Rsferral bonus credied")
+                        WalletTransaction.objects.create(
+                            user=referrer.user,
+                            wallet=wallet,
+                            amount=100,
+                            transaction_type='credit',
+                            description="Referral bonus credited"
+                        )
 
-                        Notification.objects.create(user=referrer.user,message="₹100 referral bonus credited to your wallet.")
+                        Notification.objects.create(
+                            user=referrer.user,
+                            message="₹100 referral bonus credited to your wallet."
+                        )
                 except UserProfile.DoesNotExist:
                     pass
+
             user = authenticate(
                 request,
                 username=signup_data['username'],
                 password=signup_data['password']
             )
-
             if user is not None:
                 login(request, user)
-
 
             request.session.pop('signup_data', None)
             request.session.pop('signup_otp', None)
             request.session.pop('signup_otp_time', None)
+            request.session.pop('referral_code', None)
 
             messages.success(request, "Account verified successfully.")
-
             return redirect('/profile/')
-
         else:
             messages.error(request, "Invalid OTP. Try again.")
 
     return render(request, 'verify_otp.html', {'username': username})
 
 
-def resend_otp(request,username):
+def resend_otp(request, username):
     signup_data = request.session.get('signup_data')
-    signup_otp = request.session.get ('signup_otp')
-
     if not signup_data or signup_data['username'] != username:
-        messages.error(request,"Session expired.Please signup again")
+        messages.error(request, "Session expired. Please signup again")
         return redirect('signup')
 
-    new_otp = str(random.randint(100000,999999))
+    new_otp = str(random.randint(100000, 999999))
     request.session['signup_otp'] = new_otp
     request.session['signup_otp_time'] = timezone.now().isoformat()
 
     email = signup_data['email']
-
     send_mail(
-        subject = "Verification Mail",
-        message = f"Hi {username}, This is your new otp {new_otp} for verifying your account for signup unikart ecommerce website",
-        from_email = "no-reply@gmail.com",
+        subject="Verification Mail",
+        message=f"Hi {username}, This is your new OTP {new_otp} for verifying your account on Unikart",
+        from_email="no-reply@gmail.com",
         recipient_list=[email],
         fail_silently=False,
     )
 
-    
-    messages.success(request,"A new otp has been sent to your email")
-    return redirect('verify_otp', username=username) 
+    messages.success(request, "A new OTP has been sent to your email")
+    return redirect('verify_otp', username=username)
 @login_required
 def user_list(request):
     filter_status = request.GET.get('status','all')
@@ -1460,19 +1456,21 @@ def resend_email_otp(request):
    
 
 def wallet_view(request):
-    wallet,created = Wallet.objects.get_or_create(user=request.user)
+    wallet, created = Wallet.objects.get_or_create(user=request.user)
     transaction_type = request.GET.get('type')
     transactions = WalletTransaction.objects.filter(wallet=wallet)
     if transaction_type:
         transactions = transactions.filter(transaction_type=transaction_type)
     transactions = transactions.order_by('-created_at')
-
-    paginator = Paginator(transactions,10)
+    paginator = Paginator(transactions, 10)
     page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)   
-    context = {'wallet':wallet,'page_obj':page_obj,'selected_type':transaction_type}
-    return render(request,'user/wallet.html',context)
-
+    page_obj = paginator.get_page(page_number)
+    context = {
+        'wallet': wallet,
+        'page_obj': page_obj,
+        'selected_type': transaction_type
+    }
+    return render(request, 'user/wallet.html', context)
 client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 def add_money_to_wallet(request):
     if request.method == 'POST':
@@ -1533,11 +1531,11 @@ def myorders_view(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     
     if status == "Cancelled":
-        orders = Order.objects.filter(items__status="Cancelled").distinct()
+        orders = orders.filter(items__status="Cancelled").distinct()
     elif status == "Returned":
         orders = orders.filter(items__status="Returned").distinct()
     elif status == "Delivered":
-        orders = orders.filter(items__status="Delteverd").distinct()    
+        orders = orders.filter(items__status="Delivered").distinct()    
 
     orders = orders.order_by('-created_at')
     paginator = Paginator(orders, 10)
@@ -1552,34 +1550,59 @@ def myorders_view(request):
 @login_required
 def order_detail(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
+
     tracking_steps = ["Pending", "Processing", "Shipped", "Delivered"]
     payment = Payment.objects.filter(order=order).first()
+    items = order.items.all()
+
+    # Use order.status directly instead of recomputing
+    current_status = order.status if order.status in tracking_steps else "Pending"
+
     try:
-        current_step_index = tracking_steps.index(order.status)
+        current_step_index = tracking_steps.index(current_status)
     except ValueError:
         current_step_index = 0
+
     return render(request, 'user/order_details.html', {
         'order': order,
         'tracking_steps': tracking_steps,
         'current_step_index': current_step_index,
-        'payment':payment
+        'payment': payment,
+        'order_status': current_status   
     })
 
 
 
 @login_required
-def return_order(request,order_id):
-    order = get_object_or_404(Order,id = order_id,user=request.user)
+def return_item(request, item_id):
+
+    item = get_object_or_404(OrderItem, id=item_id, order__user=request.user)
 
     if request.method == 'POST':
         reason = request.POST.get('reason')
-        ReturnRequest.objects.create(order=order,user=request.user,reason=reason,status='Pending')
-        order.status = "Return Requested"
-        order.save()
-        messages.success(request,f"Request return for Order #{order.id} has been sent successfully")
-        return redirect('myorders')
-    return render(request,'user/return_order.html',{'order':order})    
 
+        if ReturnRequest.objects.filter(item=item).exists():
+            messages.warning(request, "Return already requested for this item")
+            return redirect('myorders')
+
+        ReturnRequest.objects.create(
+            item=item,
+            user=request.user,
+            reason=reason,
+            status='Pending'
+        )
+
+        item.status = "Return Requested"
+        item.save()
+
+        messages.success(
+            request,
+            f"Return request sent for item #{item.id}"
+        )
+
+        return redirect('myorders')
+
+    return render(request, 'user/return_item.html', {'item': item,'order': item.order})
 
 @login_required(login_url='login')
 @never_cache
@@ -1622,6 +1645,7 @@ def order_list(request):
     page_obj = paginator.get_page(page_number)
     return render(request,'admin_templates/order_list.html',{'page_obj':page_obj})
 ORDER_FLOW = {
+    "Ordered": ["Pending", "Processing", "Cancelled"],  
     "Pending": ["Processing", "Shipped", "Delivered"],
     "Confirmed": ["Processing", "Shipped","Delivered","Cancelled"],
     "Processing": ["Shipped", "Delivered"],
@@ -1639,14 +1663,16 @@ def cus_order_details(request, order_id):
         .get(id=order_id)
     )
 
-    allowed_status = ORDER_FLOW.get(order.status, [])
+    for item in order.items.all():
+        item.allowed_status = ORDER_FLOW.get(item.status, [])
+
 
     return render(
         request,
         "admin_templates/cus_order_details.html",
         {
             "order": order,
-            "allowed_status": allowed_status
+           
         }
     )
     
@@ -1667,8 +1693,27 @@ def update_item_status(request, item_id):
         allowed_next = ORDER_FLOW.get(item.status, [])
 
         if new_status in allowed_next:
+
+            # ✅ update item FIRST
             item.status = new_status
             item.save()
+
+            # ✅ THEN update order
+            all_items = order.items.all()
+
+            if all(i.status == "Delivered" for i in all_items):
+                order.status = "Delivered"
+
+            elif any(i.status == "Shipped" for i in all_items):
+                order.status = "Shipped"
+
+            elif any(i.status == "Processing" for i in all_items):
+                order.status = "Processing"
+
+            else:
+                order.status = "Pending"
+
+            order.save()
 
             messages.success(
                 request,
@@ -2196,53 +2241,78 @@ def download_invoice_pdf(request,order_id):
     return response 
 
 @login_required
-def return_item(request,item_id):
-    item = get_object_or_404(OrderItem,id=item_id,order__user=request.user)
-    order = item.order
-    wallet = Wallet.objects.get(user=request.user)
+def return_item(request, item_id):
+    item = get_object_or_404(OrderItem, id=item_id, order__user=request.user)
 
-    if item.status == "Returned":
-        messages.info (request,"This item is already returned")
-        return redirect("order_detail",order_id=order.id)
-    item.status = "Returned"
-    item.save()
+    if item.status != "Delivered":
+        messages.warning(request, "Only delivered items can be returned")
+        return redirect('myorders')
 
-    refund_amount = item.price *item.quantity
-    if order.payment_method in ["Wallet","Razorpay"]:
-        wallet.balance += refund_amount
-        wallet.save()
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
 
-        WalletTransaction.objects.create(
+        if ReturnRequest.objects.filter(item=item, status__in=['Pending', 'Accepted']).exists():
+            messages.warning(request, "Return already requested for this item")
+            return redirect('myorders')
+
+        ReturnRequest.objects.create(
+            item=item,
             user=request.user,
-            wallet=wallet,
-            transaction_type="credit",
-            source="order_return",
-            amount= refund_amount
-            )
-    if not order.items.exclude(status="Returned").exists():
-        order.status = "Returned"
-        order.save()
-    messages.success(request,"Return request processed succesfully")
-    return redirect("order_detail",order_id=order.id)                       
+            reason=reason,
+            status='Pending'
+        )
+
+        item.status = "Return Requested"
+        item.save()
+
+        messages.success(request, f"Return request sent for item #{item.id}")
+        return redirect('myorders')
+
+    return render(request, 'user/return_item.html', {'item': item, 'order': item.order})               
 
 def return_requests(request):
     requests_list = ReturnRequest.objects.all().order_by('-created_at')
     return render(request,'admin_templates/return_requests.html',{'requests':requests_list})  
 
-def update_return_status(request,request_id,action):
-    return_request= get_object_or_404(ReturnRequest,id = request_id)
+def update_return_status(request, request_id, action):
+    return_request = get_object_or_404(ReturnRequest, id=request_id)
+    order = return_request.item.order
+    item = return_request.item
+    user = return_request.user
 
     if action == 'accept':
         return_request.status = 'Accepted'
-        return_request.order.status = 'Returned'
+        item.status = 'Returned'
+        item.save()
+
+        refund_amount = item.price * item.quantity
+        if order.payment_method in ["Wallet", "Razorpay"]:
+            wallet, created = Wallet.objects.get_or_create(user=user)
+            wallet.balance += refund_amount
+            wallet.save()
+
+            WalletTransaction.objects.create(
+                user=user,
+                wallet=wallet,
+                transaction_type="credit",
+                source="order_return",
+                amount=refund_amount
+            )
+
+            Notification.objects.create(
+                user=user,
+                message=f"₹{refund_amount} has been refunded to your wallet for returned item #{item.id}."
+            )
+
+        if not order.items.exclude(status="Returned").exists():
+            order.status = 'Returned'
+            order.save()
+
     elif action == 'reject':
         return_request.status = 'Rejected'
-        return_request.order.status =''
 
-    return_request.order.save()    
     return_request.save()
-
-    return redirect('return_requests')    
+    return redirect('return_requests')   
 
 def sales_report(request):
     today = timezone.now().date()
@@ -2400,3 +2470,8 @@ def download_sales_excel(request):
     response['Content-Disposition'] = 'attachment; filename="sales_report.xlsx"'
     workbook.save(response)
     return response
+
+@login_required
+def notifications_page(request):
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'user/notification_page.html', {'notifications': notifications})

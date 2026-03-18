@@ -139,7 +139,16 @@
                                             {% if user.has_usable_password %}
                                                 <li><a href="{% url 'change_password' %}">Change Password</a></li>
                                             {% endif %}
-
+                                    <li>
+            <li>
+    <a href="{% url 'notifications_page' %}">
+        🔔 Notifications
+        {% if notifications %}
+            <span class="badge bg-danger">{{ notifications.count }}</span>
+        {% endif %}
+    </a>
+</li>
+                
                                             <li><a href="{% url 'logout' %}">Logout</a></li>
                                     
                                         </ul>

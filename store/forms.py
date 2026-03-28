@@ -7,6 +7,46 @@ class OfferForm(forms.ModelForm):
        model=Offer
        fields='__all__'
 
+    def clean(self):
+        cleaned_data = super().clean()
+        offer_type = cleaned_data.get('offer_type')
+        product = cleaned_data.get('product')
+        category = cleaned_data.get('category')
+        discount_type= cleaned_data.get('discount_type')
+        dis_value = cleaned_data.get('dis_value')
+        valid_from = cleaned_data.get('valid_from')   
+        valid_to = cleaned_data.get('valid_to')
+
+        if offer_type == 'category' and not category:
+            raise ValidationError("Please select a category for category offer")
+        if offer_type == 'product' and not product:
+            raise ValidationError("Please select a product for product offer")
+        if dis_value<=0:
+            raise ValidationError("Discount must be greater than 0")
+        if discount_type == 'percentage' and dis_value >80:
+            raise ValidationError("Maximum allowed discount is 80%")
+        if discount_type == 'flat' and product and dis_value >= variation.original_price:
+            raise ValidationError("Flat discount can't be exceet product price")
+        if valid_from and valid_to and valid_from>= valid_to:
+            raise ValidationError("Valid must be before valid To")
+
+        overlapping_offers = Offer.objects.filter(offer_type=offer_type,is_active=True) 
+        if offer_type == 'category' and category:
+            overlapping_offers = overlapping_offers.filter(category=category)
+        elif offer_type == 'product' and product:
+            overlapping_offers = overlapping_offers.filter(product=product)
+        overlapping_offers= overlapping_offers.filter(
+            valid_from__lt=valid_to,
+            valid_to__gt=valid_from
+        )    
+        if self.instance.pk:
+            overlapping_offers= overlapping_offers.exclude(pk=self.instance.pk)
+        if overlapping_offers.exists():
+            raise ValidationError("An active offer already exists for this prodcut")
+        return cleaned_data        
+
+
+
 class CouponForm(forms.ModelForm):
 
     class Meta:

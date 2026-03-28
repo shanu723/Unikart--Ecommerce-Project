@@ -1,16 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 <!-- Django messages -->
-  <div class="position-fixed top-50 start-50 translate-middle z-index-3" style="width: auto; max-width: 400px;">
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show text-center" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
-    {% endif %}
-  </div>
+  
 {% block content %}
 <div class="container py-4">
   
@@ -20,9 +11,9 @@
     <div class="col-md-4">
       <div class="card shadow-sm border-0 p-3 text-center">
         {% if user.profile.profile_photo %}
-         <img src="{{ user.profile.profile_photo.url }}"class="rounded-circle mb-3 mx-auto d-block"alt="Profile Photo"width="120" height="120">
+         <img src="{{ user.profile.profile_photo.url }}"class="rounded-circle mb-3 mx-auto d-block"alt="Profile Photo"width="160" height="100">
         {% else %}
-          <img src="{{ MEDIA_URL }}profile_photos/default.jpg" class="rounded-circle mb-3 mx-auto d-block" alt="Profile Photo" width="120" height="120">
+          <img src="{{ MEDIA_URL }}profile_photos/default.jpg" class="rounded-circle mb-3 mx-auto d-block" alt="Profile Photo" width="160" height="100">
         {% endif %}
 
         <h5 class="mb-1">{{ user.username }}</h5>
@@ -121,11 +112,35 @@ target="_blank">
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-2"><label>Street</label><input type="text" name="street" class="form-control" required></div>
-          <div class="mb-2"><label>City</label><input type="text" name="city" class="form-control" required></div>
-          <div class="mb-2"><label>District</label><input type="text" name="district" class="form-control" required></div>
-          <div class="mb-2"><label>State</label><input type="text" name="state" class="form-control" required></div>
-          <div class="mb-2"><label>Pincode</label><input type="text" name="pincode" class="form-control" required></div>
+          <div class="mb-2">
+  <label>Street</label>
+  <input type="text" name="street" class="form-control" required>
+  <small class="text-danger" id="streetError"></small>
+</div>
+
+<div class="mb-2">
+  <label>City</label>
+  <input type="text" name="city" class="form-control" required>
+  <small class="text-danger" id="cityError"></small>
+</div>
+
+<div class="mb-2">
+  <label>District</label>
+  <input type="text" name="district" class="form-control" required>
+  <small class="text-danger" id="districtError"></small>
+</div>
+
+<div class="mb-2">
+  <label>State</label>
+  <input type="text" name="state" class="form-control" required>
+  <small class="text-danger" id="stateError"></small>
+</div>
+
+<div class="mb-2">
+  <label>Pincode</label>
+  <input type="text" name="pincode" class="form-control" required>
+  <small class="text-danger" id="pincodeError"></small>
+</div>
           <div class="form-check"><input type="checkbox" name="is_default" class="form-check-input"><label class="form-check-label">Set as Default</label></div>
         </div>
         <div class="modal-footer">
@@ -209,50 +224,161 @@ target="_blank">
 
 {% block scripts %}
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const username = document.querySelector('input[name="username"]');
-    const email = document.querySelector('input[name="email"]');
-    const phone = document.querySelector('input[name="phone"]');
+document.addEventListener("DOMContentLoaded", function () {
+
+    /* =========================
+       ✅ PROFILE VALIDATION
+    ========================= */
+
+    const username = document.querySelector('[name="username"]');
+    const email = document.querySelector('[name="email"]');
+    const phone = document.querySelector('[name="phone"]');
 
     const usernameError = document.getElementById("usernameError");
     const emailError = document.getElementById("emailError");
     const phoneError = document.getElementById("phoneError");
 
-    const usernamePattern = /^(?=.*[A-Za-z0-9])[A-Za-z0-9_]{3,20}$/;
+    const usernamePattern = /^[A-Za-z0-9_]{3,20}$/;
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phonePattern = /^[0-9]{10}$/;
+    const phonePattern = /^[6-9]\d{9}$/;
 
-    username.addEventListener("input", function() {
-        if (!usernamePattern.test(username.value)) {
-            usernameError.textContent = "3-20 chars, letters/numbers/underscore only.";
-        } else {
-            usernameError.textContent = "";
-        }
-    });
-
-    if (!email.disabled) {
-        email.addEventListener("input", function() {
-            if (!emailPattern.test(email.value)) {
-                emailError.textContent = "Enter a valid email.";
+    if (username) {
+        username.addEventListener("input", function () {
+            if (!usernamePattern.test(username.value.trim())) {
+                usernameError.textContent = "3-20 chars, letters/numbers/_ only";
+                username.classList.add("is-invalid");
             } else {
-                emailError.textContent = "";
+                usernameError.textContent = "";
+                username.classList.remove("is-invalid");
             }
         });
     }
 
-    phone.addEventListener("input", function() {
-        if (!phonePattern.test(phone.value)) {
-            phoneError.textContent = "Enter a 10-digit phone number.";
-        } else {
+    if (email && !email.disabled) {
+        email.addEventListener("input", function () {
+            if (!emailPattern.test(email.value.trim())) {
+                emailError.textContent = "Enter valid email";
+                email.classList.add("is-invalid");
+            } else {
+                emailError.textContent = "";
+                email.classList.remove("is-invalid");
+            }
+        });
+    }
+
+    if (phone) {
+    phone.addEventListener("input", function () {
+
+        const value = phone.value.trim();
+
+        // ❌ Empty
+        if (value === "") {
             phoneError.textContent = "";
+            phone.classList.remove("is-invalid");
+            return;
+        }
+
+        // 🚨 Check ONLY digits
+        if (!/^\d+$/.test(value)) {
+            phoneError.textContent = "Only numbers allowed";
+            phone.classList.add("is-invalid");
+        }
+
+        // 🚨 Check length first
+        else if (value.length !== 10) {
+            phoneError.textContent = "Enter exactly 10 digits";
+            phone.classList.add("is-invalid");
+        }
+
+        // 🚨 Block fake numbers (0000000000, 1111111111)
+        else if (/^(\d)\1{9}$/.test(value)) {
+            phoneError.textContent = "Invalid phone number";
+            phone.classList.add("is-invalid");
+        }
+
+        // 🚨 Indian number rule (starts 6–9)
+        else if (!/^[6-9]/.test(value)) {
+            phoneError.textContent = "Must start with 6–9";
+            phone.classList.add("is-invalid");
+        }
+
+        // ✅ Valid
+        else {
+            phoneError.textContent = "";
+            phone.classList.remove("is-invalid");
+        }
+    });
+}
+
+    /* =========================
+       ✅ ADDRESS VALIDATION
+    ========================= */
+
+   document.addEventListener("DOMContentLoaded", function () {
+
+    const addressForm = document.querySelector("#addAddressModal form");
+
+    if (!addressForm) return;
+
+    const street = addressForm.querySelector('[name="street"]');
+    const city = addressForm.querySelector('[name="city"]');
+    const district = addressForm.querySelector('[name="district"]');
+    const state = addressForm.querySelector('[name="state"]');
+    const pincode = addressForm.querySelector('[name="pincode"]');
+
+    const streetError = document.getElementById("streetError");
+    const cityError = document.getElementById("cityError");
+    const districtError = document.getElementById("districtError");
+    const stateError = document.getElementById("stateError");
+    const pincodeError = document.getElementById("pincodeError");
+
+    const streetRegex = /^[A-Za-z\s,.\-/#]{5,}$/;
+    const nameRegex = /^[A-Za-z\s]+$/;
+    const pincodeRegex = /^\d{6}$/;
+
+    street.addEventListener("input", function () {
+        if (!streetRegex.test(street.value.trim())) {
+            streetError.textContent = "Min 5 characters";
+        } else {
+            streetError.textContent = "";
         }
     });
 
-    document.querySelector("#editProfileForm").addEventListener("submit", function(e) {
-        if (usernameError.textContent || (emailError && emailError.textContent) || phoneError.textContent) {
-            e.preventDefault();
+    city.addEventListener("input", function () {
+        if (!nameRegex.test(city.value.trim())) {
+            cityError.textContent = "Letters only";
+        } else {
+            cityError.textContent = "";
         }
     });
+
+    district.addEventListener("input", function () {
+        if (!nameRegex.test(district.value.trim())) {
+            districtError.textContent = "Letters only";
+        } else {
+            districtError.textContent = "";
+        }
+    });
+
+    state.addEventListener("input", function () {
+        if (!nameRegex.test(state.value.trim())) {
+            stateError.textContent = "Letters only";
+        } else {
+            stateError.textContent = "";
+        }
+    });
+
+    pincode.addEventListener("input", function () {
+        if (!pincodeRegex.test(pincode.value.trim())) {
+            pincodeError.textContent = "6 digit pincode";
+        } else {
+            pincodeError.textContent = "";
+        }
+    });
+
+});
+
 });
 </script>
+
 {% endblock %}

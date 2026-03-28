@@ -55,17 +55,29 @@
                   </td>
                   <td>{{ product.name }}</td>
                   <td>{{ product.category.name|default:"No Category" }}</td>
-                  <td class="text-center">
-                    {% if product.status %}
-                      <span class="badge bg-success">Active</span>
-                    {% else %}
-                      <span class="badge bg-secondary">Inactive</span>
-                    {% endif %}
-                  </td>
+                 <td class="text-center">
+    <span id="status-{{ product.id }}"
+          class="badge {% if product.status %}bg-success{% else %}bg-secondary{% endif %}">
+          
+        {% if product.status %}
+            Active
+        {% else %}
+            Inactive
+        {% endif %}
+    </span>
+</td>
                   <td class="text-center">
                     <a href="{% url 'edit_product' product.id %}" class="btn btn-warning btn-sm me-1">Edit</a>
-                    <a href="{% url 'delete_product' product.id %}" class="btn btn-danger btn-sm"
-                       onclick="return confirm('Are you sure you want to delete this product?')">Delete</a>
+                  <button class="btn btn-sm toggle-btn 
+{% if product.status %}btn-warning{% else %}btn-success{% endif %}"
+        data-url="{% url 'toggle_product_status' product.id %}">
+        
+    {% if product.status %}
+        Unlist
+    {% else %}
+        List
+    {% endif %}
+</button>
                   </td>
                 </tr>
                 {% empty %}
@@ -110,4 +122,58 @@
     </div>
   </div>
 </div>
+
+
+
+  <script>
+document.querySelectorAll('.toggle-btn').forEach(button => {
+    button.addEventListener('click', function () {
+        const url = this.dataset.url;
+        const productId = url.split('/').filter(Boolean).pop(); // get ID from URL
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+
+            // 🔹 Update Button
+            if (data.status) {
+                this.textContent = "Unlist";
+                this.classList.remove('btn-success');
+                this.classList.add('btn-warning');
+            } else {
+                this.textContent = "List";
+                this.classList.remove('btn-warning');
+                this.classList.add('btn-success');
+            }
+
+            // 🔹 Update Status Badge
+            const statusBadge = document.getElementById(`status-${productId}`);
+
+            if (data.status) {
+                statusBadge.textContent = "Active";
+                statusBadge.classList.remove('bg-secondary');
+                statusBadge.classList.add('bg-success');
+            } else {
+                statusBadge.textContent = "Inactive";
+                statusBadge.classList.remove('bg-success');
+                statusBadge.classList.add('bg-secondary');
+            }
+
+        });
+    });
+});
+
+// CSRF helper
+function getCSRFToken() {
+    return document.cookie.split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+}
+</script>
 {% endblock %}

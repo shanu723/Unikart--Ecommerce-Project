@@ -171,7 +171,7 @@ def verify_otp(request, username):
             user.save()
 
             profile, created = UserProfile.objects.get_or_create(user=user)
-
+            credit_wallet(user,100,"Signup bonus credited")
             ref_code = request.session.get('referral_code')
             if ref_code:
                 try:
@@ -180,22 +180,7 @@ def verify_otp(request, username):
                         profile.referred_by = referrer
                         profile.save()
 
-                        wallet, created = Wallet.objects.get_or_create(user=referrer.user)
-                        wallet.balance += 100
-                        wallet.save()
-
-                        WalletTransaction.objects.create(
-                            user=referrer.user,
-                            wallet=wallet,
-                            amount=100,
-                            transaction_type='credit',
-                            description="Referral bonus credited"
-                        )
-
-                        Notification.objects.create(
-                            user=referrer.user,
-                            message="₹100 referral bonus credited to your wallet."
-                        )
+                        credit_wallet(referrer.user,100,"Referral bonus credited")
                 except UserProfile.DoesNotExist:
                     pass
 
@@ -241,6 +226,14 @@ def resend_otp(request, username):
 
     messages.success(request, "A new OTP has been sent to your email")
     return redirect('verify_otp', username=username)
+
+def credit_wallet(user,amount,description):
+    wallet,_=Wallet.objects.get_or_create(user=user)
+    wallet.balance+=amount
+    wallet.save()
+
+    WalletTransaction.objects.create(user=user,wallet=wallet,amount=amount,transaction_type='credit',description=description)
+    Notification.objects.create(user=user,message=f"{amount}{description}")    
 @login_required
 def user_list(request):
     filter_status = request.GET.get('status','all')
@@ -296,6 +289,34 @@ def admin_dashboard(request):
         'total_coupons_used': total_coupons_used,
     }
     return render(request, 'admin_templates/admin_dashboard.html', context)
+@login_required
+def admin_change_password(request):
+    if request.method == 'POST':
+        current_password = request.POST.get('current_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+
+        if not request.user.check_password(current_password):
+            messages.error(request,"Currnet password is incorrect")
+            return redirect('admin_change_password')
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match")
+            return redirect('admin_change_password')
+
+        if len(new_password) < 8:
+            messages.error(request, "Password must be at least 8 characters")
+            return redirect('admin_change_password')
+
+        request.user.set_password(new_password)
+        request.user.save()
+
+        update_session_auth_hash(request, request.user)
+
+        messages.success(request, "Password changed successfully")
+        return redirect('admin_dashboard')  
+
+    return render(request, 'admin_templates/change_password.html')    
+
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def category_list(request):
@@ -760,12 +781,13 @@ def cus_order_details(request,id):
 
 
 @login_required    
-def delete_product(request,product_id):
-    product=get_object_or_404(Product,id=product_id)
-    product.status=False
-    product.save()
-    messages.success(request,"Product deleted successfully")
-    return redirect('products')
+def toggle_product_status(request,product_id):
+    if request.method=='POST':
+        product = get_object_or_404(Product,id=product_id)
+        product.status = not product.status
+        product.save()
+
+        return JsonResponse({'status':product.status})
 
 @login_required
 def product_details(request, id):
@@ -820,52 +842,34 @@ def contact(request):
 
 def about(request):
     return render(request, 'about.html')
-@login_required  
-@user_passes_test(lambda u: u.is_superuser)  
+
+@login_required
+@user_passes_test(lambda u:u.is_superuser)
 def add_offer(request):
     if request.method == 'POST':
         form = OfferForm(request.POST)
         if form.is_valid():
             offer = form.save(commit=False)
 
-           
-
-            offer_type = form.cleaned_data.get('offer_type')
-            product = form.cleaned_data.get('product')
-            category = form.cleaned_data.get('category')
-       
-
-            if offer_type == 'product':
-                if not product:
-                    messages.error(request,"Please select a Product")
-                    return redirect('add_offer')
-                offer.product = product    
+            if form.cleaned_data['offer_type'] == 'product':
                 offer.category = None
-            elif offer_type == 'category':
-                if not category:
-                    messages.error(request,"Please select a category")
-                    return redirect('add_offer')
-                offer.category = category
+            elif form.cleaned_data['offer_type'] == 'category':
                 offer.product = None
-            offer.full_clean()    
-            offer.save()        
-                   
-            messages.success(request, "Offer created successfully!")
+            offer.save()
+            messages.success(request,"Offer created successfully")
             return redirect('offers_list')
-        else:
-            messages.error(request,"Flat value cant be greater than original price")
-
     else:
         form = OfferForm()
-    
     categories = Category.objects.all()
-    products = Product.objects.all()    
+    products = Product.objects.all()
 
-    return render(request, 'admin_templates/add_offer.html', {
-        'form': form,
-        'categories': categories,
-        'products': products
+    return render(request,'admin_templates/add_offer.html',{
+        'form':form,
+        'categories':categories,
+        'products':products
     })
+
+
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
@@ -885,32 +889,34 @@ def offers_list(request):
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
-def edit_offer(request,id):
-    offer = get_object_or_404(Offer,id=id)
+def edit_offer(request, offer_id):
+    offer = Offer.objects.get(pk=offer_id)
+
+    if request.method == 'POST':
+        form = OfferForm(request.POST, instance=offer)
+        if form.is_valid():
+            offer = form.save(commit=False)
+
+            if offer.offer_type == 'product':
+                offer.category = None
+            else:
+                offer.product = None
+
+            offer.save()
+            messages.success(request, "Offer updated successfully")
+            return redirect('offers_list')
+    else:
+        form = OfferForm(instance=offer)
+
     categories = Category.objects.all()
     products = Product.objects.all()
 
-    if request.method == 'POST':
-        offer.title = request.POST.get('title')
-        offer.discount_type = request.POST.get('discount_type')
-        offer.dis_value = request.POST.get('dis_value')
-        offer.is_active = bool(request.POST.get('is_active'))
-        offer.valid_from = request.POST.get('valid_from')
-        offer.valid_to = request.POST.get('valid_to')
-        offer.offer_type = request.POST.get('offer_type')
-        offer.category_id = request.POST.get('category')
-        offer.product_id = request.POST.get('product')
-
-        offer.save()
-        return redirect('offers_list')
-
-    context = {
-        'offer':offer,
-        'categories':categories,
-        'products':products,
-    }    
-
-    return render(request,'admin_templates/edit_offer.html',context)
+    return render(request, 'admin_templates/edit_offer.html', {
+        'form': form,
+        'offer': offer,
+        'categories': categories,
+        'products': products
+    })
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
@@ -1215,6 +1221,9 @@ def update_profile(request):
             if len(cleaned_phone) != 10:
                 messages.error(request, "Enter a valid 10-digit phone number.")
                 return redirect('profile')
+            if cleaned_phone == '0000000000':
+                messages.error(request, "Phone number cannot be all zeros.")
+                return redirect('profile')      
 
             profile.phone = cleaned_phone
 
@@ -1310,7 +1319,7 @@ def address_list(request):
     
     return render(request, "address_list.html", {"addresses": addresses})
 
-login_required(login_url='login')
+@login_required(login_url='login')
 def add_address(request):
     if request.method=='POST':
         street=request.POST.get('street')
@@ -1320,6 +1329,20 @@ def add_address(request):
         pincode=request.POST.get('pincode')
         
         is_default=request.POST.get('is_default')=='on'
+
+        if not re.match(r'^[A-Za-z\s,.\-/#]+$', street):
+            messages.error(request,'Street must be atleast 5 letters')
+            return redirect('profile')
+        if not city.replace(" ","").isalpha():
+            messages.error(request,"City should contain letters only")  
+            return redirect('profile')
+        if not state.replace(" ","").isalpha():
+            messages.error(request,"Sate should contain only letters")
+            return redirect('profile')
+        if not re.match(r'^\d{6}$',pincode):          
+            messages.error(request,"Pincode must be exactly 6 digits")
+            return redirect('profile')
+
 
         if is_default:
             Address.objects.filter(user=request.user,is_default=True).update(is_default=False)
@@ -1351,7 +1374,27 @@ def edit_address(request,address_id):
         address.pincode=request.POST.get('pincode') 
         address.street=request.POST.get('street') 
         
-        address.is_default=request.POST.get('is_default')=='on'  
+        address.is_default=request.POST.get('is_default')=='on' 
+
+        if len(address.street) < 5:
+            messages.error(request, "Street must be at least 5 characters")
+            return redirect('profile')
+
+        if not address.city.replace(" ", "").isalpha():
+            messages.error(request, "City should contain only letters")
+            return redirect('profile')
+
+        if not address.district.replace(" ", "").isalpha():
+            messages.error(request, "District should contain only letters")
+            return redirect('profile')
+
+        if not address.state.replace(" ", "").isalpha():
+            messages.error(request, "State should contain only letters")
+            return redirect('profile')
+
+        if not re.match(r'^\d{6}$', address.pincode):
+            messages.error(request, "Invalid pincode")
+            return redirect('profile') 
    
         if address.is_default:
             Address.objects.filter(user=request.user, is_default=True).exclude(id=address.id).update(is_default=False)
@@ -1693,12 +1736,10 @@ def update_item_status(request, item_id):
         allowed_next = ORDER_FLOW.get(item.status, [])
 
         if new_status in allowed_next:
-
-            # ✅ update item FIRST
+          
             item.status = new_status
             item.save()
-
-            # ✅ THEN update order
+        
             all_items = order.items.all()
 
             if all(i.status == "Delivered" for i in all_items):
@@ -2307,6 +2348,10 @@ def update_return_status(request, request_id, action):
         if not order.items.exclude(status="Returned").exists():
             order.status = 'Returned'
             order.save()
+
+            variation = item.variation  
+            variation.stock += item.quantity
+            variation.save()
 
     elif action == 'reject':
         return_request.status = 'Rejected'

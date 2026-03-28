@@ -313,24 +313,31 @@
                         <!--Nav Button  -->
                         <nav>
                             <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                                <a class="nav-item nav-link {% if current_sort == 'newest' %}active{% endif %}"
-                                    href="?sort=newest">Newest Arrivals</a>
-                                <a class="nav-item nav-link {% if current_sort == 'low_to_high' %}active{% endif %}"
-                                    href="?sort=low_to_high{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                                    Price Low to High
-                                </a>
-                                <a class="nav-item nav-link {% if current_sort == 'high_to_low' %}active{% endif %}"
-                                    href="?sort=high_to_low{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                                    Price High to Low
-                                </a>
-                                <a class="nav-item nav-link {% if current_sort == 'a_to_z' %}active{% endif %}"
-                                    href="?sort=a_to_z{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                                    Sort by A–Z
-                                </a>
-                                <a class="nav-item nav-link {% if current_sort == 'z_to_a' %}active{% endif %}"
-                                    href="?sort=z_to_a{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
-                                    Sort by Z–A
-                                </a>
+                                 <a class="nav-item nav-link {% if current_sort == 'newest' %}active{% endif %}"
+                   href="?sort=newest{% for cat in selected_categories %}&category={{ cat }}{% endfor %}{% for brand in selected_brands %}&brand={{ brand }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                   Newest Arrivals
+                </a>
+
+                <a class="nav-item nav-link {% if current_sort == 'low_to_high' %}active{% endif %}"
+                   href="?sort=low_to_high{% for cat in selected_categories %}&category={{ cat }}{% endfor %}{% for brand in selected_brands %}&brand={{ brand }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                   Price Low to High
+                </a>
+
+                <a class="nav-item nav-link {% if current_sort == 'high_to_low' %}active{% endif %}"
+                   href="?sort=high_to_low{% for cat in selected_categories %}&category={{ cat }}{% endfor %}{% for brand in selected_brands %}&brand={{ brand }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                   Price High to Low
+                </a>
+
+                <a class="nav-item nav-link {% if current_sort == 'a_to_z' %}active{% endif %}"
+                   href="?sort=a_to_z{% for cat in selected_categories %}&category={{ cat }}{% endfor %}{% for brand in selected_brands %}&brand={{ brand }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                   Sort by A–Z
+                </a>
+
+                <a class="nav-item nav-link {% if current_sort == 'z_to_a' %}active{% endif %}"
+                   href="?sort=z_to_a{% for cat in selected_categories %}&category={{ cat }}{% endfor %}{% for brand in selected_brands %}&brand={{ brand }}{% endfor %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}{% if query %}&q={{ query }}{% endif %}">
+                   Sort by Z–A
+                </a>
+
 
                                 <!-- 🔍 Search Bar -->
                                 <form method="get" class="mt-3" role="search" style="margin-left: auto;">

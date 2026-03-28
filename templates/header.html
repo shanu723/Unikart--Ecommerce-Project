@@ -32,6 +32,9 @@
                                     <li><a href="{% if user.is_authenticated %}{% url 'user_dashboard' %}{% else %}{% url 'home' %}{% endif %}">Home</a></li>
                                     <li><a href="{% url 'shop' %}">shop</a></li>
                                     <li><a href="{% url 'about' %}">about</a></li>
+                                     {% if user.is_authenticated %}
+    <li><a href="{% url 'notifications_page' %}">Notifications</a></li>
+{% endif %}
                                     <!--li class="hot"><a href="#">Latest</a>
                                         <ul class="submenu">
                                             <li><a href="{% static 'shop.html' %}"> Product list</a></li>

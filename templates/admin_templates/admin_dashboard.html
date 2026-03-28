@@ -116,13 +116,18 @@
                   <p class="mb-1 text-black">Admin</p>
                 </div>
               </a>
-              <div class="dropdown-menu navbar-dropdown" aria-labelledby="profileDropdown">
-                
-                <div class="dropdown-divider"></div>
-               <a class="dropdown-item" href="{% url 'logout' %}">
-  <i class="mdi mdi-logout me-2 text-primary"></i> Sign out
-</a>
-              </div>
+             <div class="dropdown-menu navbar-dropdown" aria-labelledby="profileDropdown">
+    
+    <a class="dropdown-item" href="{% url 'admin_change_password' %}">
+        <i class="mdi mdi-lock-reset me-2 text-warning"></i> Change Password
+    </a>
+
+    <div class="dropdown-divider"></div>
+
+    <a class="dropdown-item" href="{% url 'logout' %}">
+        <i class="mdi mdi-logout me-2 text-primary"></i> Sign out
+    </a>
+</div>
             </li>
             <!--li class="nav-item d-none d-lg-block full-screen-link">
               <a class="nav-link">

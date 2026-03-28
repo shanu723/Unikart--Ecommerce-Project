@@ -268,7 +268,7 @@ class ReturnRequest(models.Model):
     created_at = models.DateTimeField(default=timezone.now) 
 
     def __str__(self):
-        return f"REturn Request for Order #{self.order.id}({self.status})"
+        return f"REturn Request for Order #{self.item.id}({self.status})"
 
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
